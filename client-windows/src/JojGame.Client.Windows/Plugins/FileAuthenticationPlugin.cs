@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using JojGame.Client.Windows.Models;
 using JojGame.Client.Windows.Utilities;
@@ -52,7 +53,7 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
             };
         }
 
-        if (string.IsNullOrWhiteSpace(credential.Salt) || string.IsNullOrWhiteSpace(credential.PasswordHash))
+        if (!IsValidBase64(credential.Salt) || !IsValidBase64(credential.PasswordHash))
         {
             return CorruptedCredentialResult();
         }
@@ -132,5 +133,16 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
             Message = "Credential store is corrupted. Delete it to register again.",
             CreatedNewCredential = false
         };
+    }
+
+    private static bool IsValidBase64(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var buffer = new Span<byte>(new byte[value.Length]);
+        return Convert.TryFromBase64String(value, buffer, out _);
     }
 }
