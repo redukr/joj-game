@@ -23,9 +23,11 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    ```bash
    echo "ADMIN_TOKEN=supersecret" > .env
    echo "ALLOWED_OAUTH_PROVIDERS=apple,google,guest" >> .env
-   # Add extra origins for the web client if needed (defaults to http://localhost:8001)
+   # Add extra origins for the web client if needed (defaults allow any localhost/127.x port)
    echo "ALLOWED_ORIGINS=http://localhost:8001,http://localhost:4173" >> .env
    ```
+   The server also permits any `http://localhost:<port>` or `http://127.0.0.1:<port>` origin by default, so common dev setups
+   (e.g., Vite on 5173/4173) work out of the box. Override `ALLOWED_ORIGIN_REGEX` if you need to tighten or broaden this rule.
    You can also copy `config/settings.yaml` and tweak it for local overrides. To load a custom file, point
    `SETTINGS_FILE` at its path:
    ```bash
