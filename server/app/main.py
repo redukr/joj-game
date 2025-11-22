@@ -1,8 +1,17 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import admin, auth, rooms
 
 app = FastAPI(title="JOJ Game Server", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8001", "http://127.0.0.1:8001"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth.router)
 app.include_router(admin.router)
