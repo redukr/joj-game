@@ -23,6 +23,8 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    ```bash
    echo "ADMIN_TOKEN=supersecret" > .env
    echo "ALLOWED_OAUTH_PROVIDERS=apple,google,guest" >> .env
+   # Add extra origins for the web client if needed (defaults to http://localhost:8001)
+   echo "ALLOWED_ORIGINS=http://localhost:8001,http://localhost:4173" >> .env
    ```
    You can also copy `config/settings.yaml` and tweak it for local overrides. To load a custom file, point
    `SETTINGS_FILE` at its path:

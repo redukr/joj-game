@@ -12,7 +12,7 @@ Server setup and launch
 3) (Optional) Configure environment values such as an admin token and allowed OAuth providers by creating a .env file:
    echo "ADMIN_TOKEN=supersecret" > .env
    echo "ALLOWED_OAUTH_PROVIDERS=apple,google,guest" >> .env
-4) Start the FastAPI server in development mode:
+4) Start the FastAPI server in development mode. The API allows requests from the locally served web client (http://localhost:8001):
    uvicorn app.main:app --reload
 
 Web client setup and launch

@@ -1,0 +1,16 @@
+<Window x:Class="JojGame.Client.Windows.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="JOJ Game - Dashboard" Height="280" Width="420"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <StackPanel>
+            <TextBlock Text="Windows Client" FontSize="18" FontWeight="Bold" />
+            <TextBlock x:Name="WelcomeText" Margin="0,8,0,0" FontSize="14" />
+            <TextBlock x:Name="RoleText" Margin="0,4,0,0" />
+            <Border Margin="0,16,0,0" Padding="12" BorderBrush="LightGray" BorderThickness="1" CornerRadius="6">
+                <TextBlock TextWrapping="Wrap" x:Name="TipsText" />
+            </Border>
+        </StackPanel>
+    </Grid>
+</Window>

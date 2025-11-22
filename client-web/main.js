@@ -112,7 +112,13 @@ function renderRooms(rooms) {
 
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = `Host: ${room.host_user_id} | Id: ${room.id}`;
+    const metaBits = [
+      `Host: ${room.host_user_id}`,
+      `Code: ${room.code}`,
+      `Max: ${room.max_players}`,
+      `Visibility: ${room.visibility}`,
+    ];
+    meta.textContent = metaBits.join(" | ");
 
     item.appendChild(title);
     item.appendChild(meta);
@@ -148,7 +154,7 @@ async function createRoom(event) {
     }
 
     const room = await response.json();
-    log(`Created room "${room.name}" (#${room.id}).`);
+    log(`Created room "${room.name}" (code: ${room.code}).`);
     document.getElementById("roomName").value = "";
     await loadRooms();
   } catch (error) {
