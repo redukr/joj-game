@@ -76,6 +76,43 @@
       <ul id="roomsList" class="list"></ul>
     </section>
 
+    <section id="gameSection" class="card" hidden>
+      <div class="card-header">
+        <h2>Gameplay workspace</h2>
+        <div class="actions">
+          <button id="drawCard" type="button">Draw card</button>
+          <button id="resetGameplay" type="button" class="ghost">Reset table</button>
+        </div>
+      </div>
+      <p class="hint">
+        Available once you sign in. Cards are pulled from the server deck so you can try drawing and arranging them locally.
+      </p>
+      <div id="resourceBar" class="resource-bar"></div>
+      <div class="grid game-grid">
+        <article class="card nested-card">
+          <div class="card-header">
+            <h3>Deck</h3>
+            <div class="pill" id="deckCount">0 cards</div>
+          </div>
+          <p class="muted">Use Draw to pull the next card into your hand.</p>
+        </article>
+
+        <article class="card nested-card">
+          <div class="card-header">
+            <h3>Hand</h3>
+          </div>
+          <ul id="handList" class="list compact-list"></ul>
+        </article>
+
+        <article class="card nested-card">
+          <div class="card-header">
+            <h3>Workspace</h3>
+          </div>
+          <ul id="workspaceList" class="list compact-list"></ul>
+        </article>
+      </div>
+    </section>
+
     <section class="grid">
       <article class="card" data-admin-only>
         <div class="card-header">
