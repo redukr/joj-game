@@ -55,6 +55,13 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
 
         if (!IsValidBase64(credential.Salt) || !IsValidBase64(credential.PasswordHash))
         {
+            return new AuthenticationResult
+            {
+                Success = false,
+                Role = null,
+                Message = "Credential store is corrupted. Delete it to register again.",
+                CreatedNewCredential = false
+            };
             return CorruptedCredentialResult();
         }
 
@@ -62,6 +69,16 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
         try
         {
             verified = PasswordHasher.Verify(password, credential.Salt, credential.PasswordHash);
+        }
+        catch
+        {
+            return new AuthenticationResult
+            {
+                Success = false,
+                Role = null,
+                Message = "Credential store is corrupted. Delete it to register again.",
+                CreatedNewCredential = false
+            };
         }
         catch (FormatException)
         {
@@ -142,6 +159,7 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
             return false;
         }
 
+        Span<byte> buffer = stackalloc byte[value.Length];
         var buffer = new Span<byte>(new byte[value.Length]);
         return Convert.TryFromBase64String(value, buffer, out _);
     }
