@@ -2,6 +2,8 @@
 setlocal
 
 set "VENV_DIR=.venv"
+set "LOG_FILE=error-log.txt"
+set "LOG_PATH="
 set "PYTHON_BIN="
 
 for %%P in (python "py -3" py) do (
@@ -27,40 +29,49 @@ if not exist server (
 )
 
 pushd server >nul
+set "LOG_PATH=%CD%\%LOG_FILE%"
+
+echo [INFO] Logging detailed output to %LOG_PATH%.
+echo [%date% %time%] Starting server setup > "%LOG_PATH%"
 
 if not exist "%VENV_DIR%" (
-  echo [INFO] Creating Python virtual environment in server\%VENV_DIR%...
-  %PYTHON_BIN% -m venv "%VENV_DIR%" >nul 2>&1
+  call :log "[INFO] Creating Python virtual environment in server\%VENV_DIR%..."
+  %PYTHON_BIN% -m venv "%VENV_DIR%" >> "%LOG_PATH%" 2>&1
   if errorlevel 1 (
-    echo [ERROR] Failed to create virtual environment. Ensure you have write permissions to %CD%.
-    echo         If %VENV_DIR% already exists, close any processes using it and delete it before retrying.
+    call :log "[ERROR] Failed to create virtual environment. Ensure you have write permissions to %CD%."
+    call :log "        If %VENV_DIR% already exists, close any processes using it and delete it before retrying."
     goto :error
   )
 )
 
 if not exist "%VENV_DIR%\Scripts\activate.bat" (
-  echo [ERROR] Virtual environment activation script not found at %VENV_DIR%\Scripts\activate.bat.
+  call :log "[ERROR] Virtual environment activation script not found at %VENV_DIR%\Scripts\activate.bat."
   exit /b 1
 )
 
-call "%VENV_DIR%\Scripts\activate.bat"
+call "%VENV_DIR%\Scripts\activate.bat" >> "%LOG_PATH%" 2>&1
 if errorlevel 1 goto :error
 
 if not exist requirements.txt (
-  echo [ERROR] requirements.txt not found.
+  call :log "[ERROR] requirements.txt not found."
   exit /b 1
 )
 
-echo [INFO] Installing dependencies from requirements.txt...
-pip install -r requirements.txt
+call :log "[INFO] Installing dependencies from requirements.txt..."
+pip install -r requirements.txt >> "%LOG_PATH%" 2>&1
 if errorlevel 1 goto :error
 
-echo [INFO] Starting Uvicorn with autoreload...
-uvicorn app.main:app --reload
+call :log "[INFO] Starting Uvicorn with autoreload..."
+uvicorn app.main:app --reload >> "%LOG_PATH%" 2>&1
 if errorlevel 1 goto :error
 
 goto :eof
 
 :error
-echo [ERROR] Failed to start the server.
+call :log "[ERROR] Failed to start the server. See %LOG_PATH% for details."
 exit /b 1
+
+:log
+echo %~1
+if defined LOG_PATH echo %~1>>"%LOG_PATH%"
+goto :eof
