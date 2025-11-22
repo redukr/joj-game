@@ -53,6 +53,7 @@ class User(SQLModel, table=True):
     id: str = Field(primary_key=True)
     provider: Provider
     display_name: str
+    password_hash: str | None = Field(default=None, description="Hashed password for local auth")
 
 
 class UserRead(SQLModel):
@@ -80,6 +81,12 @@ class LoginRequest(SQLModel):
     provider: Provider
     token: Optional[str] = Field(None, description="ID token from the provider")
     display_name: Optional[str] = Field(None, description="Fallback name for guest accounts")
+    password: Optional[str] = Field(
+        None,
+        min_length=4,
+        max_length=128,
+        description="Password used for guest/local authentication",
+    )
 
 
 class RoomCreate(SQLModel):
