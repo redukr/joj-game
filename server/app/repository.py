@@ -160,6 +160,7 @@ class Repository:
             name=payload.name,
             host_user_id=host_user_id,
             max_players=payload.max_players,
+            max_spectators=payload.max_spectators,
             visibility=payload.visibility,
         )
         self.session.add(room)
