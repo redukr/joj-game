@@ -50,9 +50,9 @@ class Settings(BaseSettings):
         def customise_sources(cls, init_settings, env_settings, file_secret_settings):
             return (
                 env_settings,
-                _file_settings_source,
                 init_settings,
                 file_secret_settings,
+                _file_settings_source,
             )
 
 
