@@ -2,6 +2,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import get_settings
@@ -32,9 +33,17 @@ def _add_missing_max_spectators_column() -> None:
         return
 
     with engine.begin() as connection:
-        connection.exec_driver_sql(
-            "ALTER TABLE room ADD COLUMN max_spectators INTEGER NOT NULL DEFAULT 0"
-        )
+        try:
+            connection.exec_driver_sql(
+                "ALTER TABLE room ADD COLUMN max_spectators INTEGER NOT NULL DEFAULT 0"
+            )
+        except OperationalError as error:
+            # If a concurrent worker already added the column between the check above
+            # and this statement, ignore the duplicate-column error so startup
+            # continues for all processes.
+            message = str(getattr(error, "orig", error)).lower()
+            if "duplicate column name" not in message:
+                raise
 
 
 def init_db() -> None:
