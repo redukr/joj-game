@@ -37,6 +37,10 @@ class Settings(BaseSettings):
         ],
         env="ALLOWED_ORIGINS",
     )
+    allowed_origin_regex: str = Field(
+        r"http://(localhost|127\\.0\\.0\\.1)(:\\d+)?",
+        env="ALLOWED_ORIGIN_REGEX",
+    )
     default_page_size: int = Field(50, env="DEFAULT_PAGE_SIZE")
 
     @validator("allowed_oauth_providers", "allowed_origins", pre=True)
