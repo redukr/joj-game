@@ -2,6 +2,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from sqlalchemy import inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import get_settings
@@ -20,6 +21,17 @@ engine = _build_engine()
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
+    _migrate_password_hash_column()
+
+
+def _migrate_password_hash_column() -> None:
+    inspector = inspect(engine)
+    columns = {column["name"] for column in inspector.get_columns("user")}
+    if "password_hash" in columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE user ADD COLUMN password_hash VARCHAR"))
 
 
 @contextmanager
