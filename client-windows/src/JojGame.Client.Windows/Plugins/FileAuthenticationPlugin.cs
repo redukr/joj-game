@@ -58,6 +58,17 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
             };
         }
 
+        if (!IsValidBase64(credential.Salt) || !IsValidBase64(credential.PasswordHash))
+        {
+            return new AuthenticationResult
+            {
+                Success = false,
+                Role = null,
+                Message = "Credential store is corrupted. Delete it to register again.",
+                CreatedNewCredential = false
+            };
+        }
+
         bool verified;
         try
         {
@@ -123,5 +134,16 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
         {
             return null;
         }
+    }
+
+    private static bool IsValidBase64(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        Span<byte> buffer = stackalloc byte[value.Length];
+        return Convert.TryFromBase64String(value, buffer, out _);
     }
 }
