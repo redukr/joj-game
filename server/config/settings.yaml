@@ -3,3 +3,5 @@ allowed_oauth_providers:
   - apple
   - google
   - guest
+allowed_origins:
+  - "http://localhost:8001"

@@ -24,9 +24,12 @@ class Settings(BaseSettings):
     allowed_oauth_providers: List[str] = Field(
         default_factory=lambda: ["apple", "google", "guest"], env="ALLOWED_OAUTH_PROVIDERS"
     )
+    allowed_origins: List[str] = Field(
+        default_factory=lambda: ["http://localhost:8001"], env="ALLOWED_ORIGINS"
+    )
 
-    @validator("allowed_oauth_providers", pre=True)
-    def _split_providers(cls, value):  # noqa: N805
+    @validator("allowed_oauth_providers", "allowed_origins", pre=True)
+    def _split_csv(cls, value):  # noqa: N805
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
