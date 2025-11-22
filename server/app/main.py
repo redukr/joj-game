@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from pathlib import Path
@@ -27,6 +28,17 @@ app.include_router(auth.router)
 app.include_router(cards.router)
 app.include_router(admin.router)
 app.include_router(rooms.router)
+
+
+@app.get("/", response_class=JSONResponse)
+def root():
+    """Provide a friendly root response instead of FastAPI's default 404."""
+
+    return {
+        "message": "JOJ Game server is running",
+        "docs_url": "/docs",
+        "openapi_url": "/openapi.json",
+    }
 
 
 @app.on_event("startup")
