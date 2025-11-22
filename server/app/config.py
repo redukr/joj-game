@@ -30,11 +30,14 @@ class Settings(BaseSettings):
         default_factory=lambda: ["apple", "google", "guest"], env="ALLOWED_OAUTH_PROVIDERS"
     )
     allowed_origins: List[str] = Field(
-        default_factory=lambda: ["http://localhost:8001"], env="ALLOWED_ORIGINS"
+        default_factory=lambda: [
+            "http://localhost:8001",
+            "http://127.0.0.1:8001",
+        ],
+        env="ALLOWED_ORIGINS",
     )
 
     @validator("allowed_oauth_providers", "allowed_origins", pre=True)
-    def _split_providers(cls, value):  # noqa: N805
     def _split_csv(cls, value):  # noqa: N805
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
@@ -47,9 +50,9 @@ class Settings(BaseSettings):
         def customise_sources(cls, init_settings, env_settings, file_secret_settings):
             return (
                 env_settings,
+                _file_settings_source,
                 init_settings,
                 file_secret_settings,
-                _file_settings_source,
             )
 
 
