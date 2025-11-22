@@ -1,21 +1,24 @@
 from fastapi import APIRouter, Depends
 
-from app.dependencies import get_current_user, get_store
-from app.models import Room, RoomCreate, User
-from app.storage import InMemoryStore
+from app.config import get_settings
+from app.dependencies import get_current_user, get_repository
+from app.models import RoomRead, RoomCreate, UserRead
+from app.repository import Repository, paginate
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 
-@router.post("", response_model=Room)
+@router.post("", response_model=RoomRead)
 def create_room(
     payload: RoomCreate,
-    current_user: User = Depends(get_current_user),
-    store: InMemoryStore = Depends(get_store),
+    current_user: UserRead = Depends(get_current_user),
+    repo: Repository = Depends(get_repository),
 ):
-    return store.create_room(payload, host_user_id=current_user.id)
+    return repo.create_room(payload, host_user_id=current_user.id)
 
 
-@router.get("", response_model=list[Room])
-def list_rooms(store: InMemoryStore = Depends(get_store)):
-    return list(store.rooms.values())
+@router.get("", response_model=list[RoomRead])
+def list_rooms(limit: int | None = None, offset: int | None = None, repo: Repository = Depends(get_repository)):
+    settings = get_settings()
+    limit_value, offset_value = paginate(limit, offset, settings.default_page_size)
+    return repo.list_rooms(limit_value, offset_value)

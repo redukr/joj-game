@@ -1,3 +1,8 @@
+const STORAGE_KEYS = {
+  authToken: "joj-auth-token",
+  user: "joj-user",
+};
+
 const statusArea = document.getElementById("statusArea");
 const apiBaseInput = document.getElementById("apiBase");
 const guestLoginForm = document.getElementById("guestLoginForm");
@@ -38,6 +43,18 @@ function requireAdminToken() {
   return token;
 }
 
+function setAuthSession(token, user) {
+  authToken = token;
+  currentUser = user;
+  if (token && user) {
+    localStorage.setItem(STORAGE_KEYS.authToken, token);
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.authToken);
+    localStorage.removeItem(STORAGE_KEYS.user);
+  }
+}
+
 function adminHeaders() {
   return {
     "Content-Type": "application/json",
@@ -51,6 +68,28 @@ function setUserInfo() {
     return;
   }
   userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})`;
+}
+
+function handleAuthFailure() {
+  log("Session expired. Please log in again.", true);
+  setAuthSession(null, null);
+  setUserInfo();
+}
+
+function restoreSession() {
+  const savedToken = localStorage.getItem(STORAGE_KEYS.authToken);
+  const savedUser = localStorage.getItem(STORAGE_KEYS.user);
+  if (savedToken && savedUser) {
+    try {
+      const parsedUser = JSON.parse(savedUser);
+      setAuthSession(savedToken, parsedUser);
+      setUserInfo();
+      log("Restored previous session.");
+      loadRooms();
+    } catch (error) {
+      handleAuthFailure();
+    }
+  }
 }
 
 async function handleGuestLogin(event) {
@@ -73,8 +112,7 @@ async function handleGuestLogin(event) {
     }
 
     const data = await response.json();
-    authToken = data.access_token;
-    currentUser = data.user;
+    setAuthSession(data.access_token, data.user);
     log(`Logged in as ${currentUser.display_name}`);
     setUserInfo();
     await loadRooms();
@@ -87,6 +125,9 @@ async function loadRooms() {
   try {
     const response = await fetch(apiUrl("/rooms"));
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
       throw new Error(`Unable to load rooms: ${response.status}`);
     }
     const rooms = await response.json();
@@ -150,6 +191,9 @@ async function createRoom(event) {
 
     if (!response.ok) {
       const errText = await response.text();
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
       throw new Error(`Create room failed: ${response.status} ${errText}`);
     }
 
@@ -225,6 +269,12 @@ function renderDecks(decks) {
 
     const actions = document.createElement("div");
     actions.className = "item-actions";
+    const exportButton = document.createElement("button");
+    exportButton.type = "button";
+    exportButton.className = "ghost";
+    exportButton.textContent = "Export JSON";
+    exportButton.addEventListener("click", () => exportDeck(deck.id));
+    actions.appendChild(exportButton);
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "ghost";
@@ -381,6 +431,23 @@ async function deleteDeck(deckId) {
   }
 }
 
+async function exportDeck(deckId) {
+  try {
+    const response = await fetch(apiUrl(`/admin/decks/${deckId}/export`), {
+      headers: { "X-Admin-Token": requireAdminToken() },
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Export failed: ${response.status} ${errText}`);
+    }
+    const payload = await response.json();
+    const pretty = JSON.stringify(payload, null, 2);
+    log(`Exported deck #${deckId}:\n${pretty}`);
+  } catch (error) {
+    log(error.message, true);
+  }
+}
+
 async function loadAdminData() {
   await Promise.all([loadCards(), loadDecks()]);
 }
@@ -398,4 +465,5 @@ function wireEvents() {
 
 wireEvents();
 setUserInfo();
+restoreSession();
 log("Ready. Set your API base URL, sign in as a guest, or manage decks with the admin token.");

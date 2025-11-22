@@ -26,6 +26,7 @@ def _file_settings_source(_: BaseSettings) -> dict[str, Any]:
 
 class Settings(BaseSettings):
     admin_token: str = Field("changeme", env="ADMIN_TOKEN")
+    database_url: str = Field("./data/app.db", env="DATABASE_URL")
     allowed_oauth_providers: List[str] = Field(
         default_factory=lambda: ["apple", "google", "guest"], env="ALLOWED_OAUTH_PROVIDERS"
     )
@@ -36,6 +37,7 @@ class Settings(BaseSettings):
         ],
         env="ALLOWED_ORIGINS",
     )
+    default_page_size: int = Field(50, env="DEFAULT_PAGE_SIZE")
 
     @validator("allowed_oauth_providers", "allowed_origins", pre=True)
     def _split_csv(cls, value):  # noqa: N805

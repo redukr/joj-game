@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import get_settings
+from app.dependencies import get_repository, get_settings_dep
 from app.models import AuthResponse, LoginRequest, Provider
-from app.storage import InMemoryStore
-from app.dependencies import get_store, get_settings_dep
+from app.repository import Repository
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -20,10 +20,8 @@ def _validate_login_payload(payload: LoginRequest, settings):
 @router.post("/login", response_model=AuthResponse)
 def login(
     payload: LoginRequest,
-    store: InMemoryStore = Depends(get_store),
+    repo: Repository = Depends(get_repository),
     settings=Depends(get_settings_dep),
 ):
     _validate_login_payload(payload, settings)
-    display_name = payload.display_name or payload.provider.value.title()
-    user, token = store.create_user(payload.provider, display_name=display_name)
-    return AuthResponse(access_token=token, user=user)
+    return repo.create_user(payload)
