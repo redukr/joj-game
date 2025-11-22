@@ -89,6 +89,22 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
             return CorruptedCredentialResult();
         }
 
+        bool verified;
+        try
+        {
+            verified = PasswordHasher.Verify(password, credential.Salt, credential.PasswordHash);
+        }
+        catch
+        {
+            return new AuthenticationResult
+            {
+                Success = false,
+                Role = null,
+                Message = "Credential store is corrupted. Delete it to register again.",
+                CreatedNewCredential = false
+            };
+        }
+
         return new AuthenticationResult
         {
             Success = verified,
