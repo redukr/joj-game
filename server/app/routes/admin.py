@@ -1,64 +1,57 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
-from app.dependencies import get_store, require_admin
-from app.models import Card, CardBase, Deck, DeckBase
-from app.storage import InMemoryStore
+from app.config import get_settings
+from app.dependencies import get_repository, require_admin
+from app.models import CardRead, CardBase, DeckRead, DeckBase
+from app.repository import Repository, paginate
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
-@router.post("/cards", response_model=Card)
-def create_card(payload: CardBase, store: InMemoryStore = Depends(get_store)):
-    return store.add_card(payload)
+@router.post("/cards", response_model=CardRead)
+def create_card(payload: CardBase, repo: Repository = Depends(get_repository)):
+    return repo.add_card(payload)
 
 
-@router.get("/cards", response_model=list[Card])
-def list_cards(store: InMemoryStore = Depends(get_store)):
-    return list(store.cards.values())
+@router.get("/cards", response_model=list[CardRead])
+def list_cards(limit: int | None = None, offset: int | None = None, repo: Repository = Depends(get_repository)):
+    settings = get_settings()
+    limit_value, offset_value = paginate(limit, offset, settings.default_page_size)
+    return repo.list_cards(limit_value, offset_value)
 
 
-@router.put("/cards/{card_id}", response_model=Card)
-def update_card(card_id: int, payload: CardBase, store: InMemoryStore = Depends(get_store)):
-    try:
-        return store.update_card(card_id, payload)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Card not found")
+@router.put("/cards/{card_id}", response_model=CardRead)
+def update_card(card_id: int, payload: CardBase, repo: Repository = Depends(get_repository)):
+    return repo.update_card(card_id, payload)
 
 
 @router.delete("/cards/{card_id}", status_code=204)
-def delete_card(card_id: int, store: InMemoryStore = Depends(get_store)):
-    try:
-        store.delete_card(card_id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Card not found")
+def delete_card(card_id: int, repo: Repository = Depends(get_repository)):
+    repo.delete_card(card_id)
 
 
-@router.post("/decks", response_model=Deck)
-def create_deck(payload: DeckBase, store: InMemoryStore = Depends(get_store)):
-    try:
-        return store.add_deck(payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+@router.post("/decks", response_model=DeckRead)
+def create_deck(payload: DeckBase, repo: Repository = Depends(get_repository)):
+    return repo.add_deck(payload)
 
 
-@router.get("/decks", response_model=list[Deck])
-def list_decks(store: InMemoryStore = Depends(get_store)):
-    return list(store.decks.values())
+@router.get("/decks", response_model=list[DeckRead])
+def list_decks(limit: int | None = None, offset: int | None = None, repo: Repository = Depends(get_repository)):
+    settings = get_settings()
+    limit_value, offset_value = paginate(limit, offset, settings.default_page_size)
+    return repo.list_decks(limit_value, offset_value)
 
 
-@router.put("/decks/{deck_id}", response_model=Deck)
-def update_deck(deck_id: int, payload: DeckBase, store: InMemoryStore = Depends(get_store)):
-    try:
-        return store.update_deck(deck_id, payload)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Deck not found")
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+@router.put("/decks/{deck_id}", response_model=DeckRead)
+def update_deck(deck_id: int, payload: DeckBase, repo: Repository = Depends(get_repository)):
+    return repo.update_deck(deck_id, payload)
 
 
 @router.delete("/decks/{deck_id}", status_code=204)
-def delete_deck(deck_id: int, store: InMemoryStore = Depends(get_store)):
-    try:
-        store.delete_deck(deck_id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Deck not found")
+def delete_deck(deck_id: int, repo: Repository = Depends(get_repository)):
+    repo.delete_deck(deck_id)
+
+
+@router.get("/decks/{deck_id}/export")
+def export_deck(deck_id: int, repo: Repository = Depends(get_repository)):
+    return repo.export_deck(deck_id)

@@ -46,6 +46,6 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
 - `GET /rooms` — list all rooms.
 
 ## Notes
-- Storage is in-memory for now; replace `InMemoryStore` with a database-backed repository for production.
+- Data now persists to SQLite (`./data/app.db`) via SQLModel; adjust `DATABASE_URL` to point to a different location.
 - Token validation for Apple/Google logins is stubbed; wire it to the real OAuth/OpenID Connect verification per provider when ready.
-- Card/deck management is structured so you can swap in logic from [CardGenerator](https://github.com/redukr/CardGenerator) by replacing the storage layer.
+- Decks can be exported with `GET /admin/decks/{id}/export` (admin token required); connect this to your renderer/export pipeline as needed.
