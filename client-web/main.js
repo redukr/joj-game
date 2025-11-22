@@ -19,9 +19,29 @@ const deckForm = document.getElementById("deckForm");
 const cardsList = document.getElementById("cardsList");
 const decksList = document.getElementById("decksList");
 const adminOnlySections = document.querySelectorAll("[data-admin-only]");
+const gameSection = document.getElementById("gameSection");
+const deckCount = document.getElementById("deckCount");
+const resourceBar = document.getElementById("resourceBar");
+const handList = document.getElementById("handList");
+const workspaceList = document.getElementById("workspaceList");
+const drawCardButton = document.getElementById("drawCard");
+const resetGameplayButton = document.getElementById("resetGameplay");
 
 let authToken = null;
 let currentUser = null;
+let deckCards = [];
+let handCards = [];
+let workspaceCards = [];
+
+const STARTING_RESOURCES = {
+  time: 1,
+  reputation: 1,
+  discipline: 1,
+  documents: 1,
+  technology: 1,
+};
+
+let playerResources = { ...STARTING_RESOURCES };
 
 function log(message, isError = false) {
   const prefix = new Date().toLocaleTimeString();
@@ -53,6 +73,7 @@ function setAuthSession(token, user) {
   } else {
     localStorage.removeItem(STORAGE_KEYS.authToken);
     localStorage.removeItem(STORAGE_KEYS.user);
+    resetGameplayState();
   }
 }
 
@@ -91,7 +112,172 @@ function handleAuthFailure() {
   setUserInfo();
 }
 
-function restoreSession() {
+function resetGameplayState() {
+  deckCards = [];
+  handCards = [];
+  workspaceCards = [];
+  playerResources = { ...STARTING_RESOURCES };
+  if (gameSection) {
+    gameSection.hidden = true;
+  }
+  renderResources();
+  renderDeckCount();
+  renderHand();
+  renderWorkspace();
+}
+
+function renderResources() {
+  if (!resourceBar) return;
+  resourceBar.innerHTML = "";
+  Object.entries(playerResources).forEach(([key, value]) => {
+    const pill = document.createElement("div");
+    pill.className = "resource-pill";
+    const label = key.charAt(0).toUpperCase() + key.slice(1);
+    pill.textContent = `${label}: ${value}`;
+    resourceBar.appendChild(pill);
+  });
+}
+
+function renderDeckCount() {
+  if (!deckCount) return;
+  deckCount.textContent = deckCards.length
+    ? `${deckCards.length} card${deckCards.length === 1 ? "" : "s"}`
+    : "Deck empty";
+}
+
+function renderCardList(target, cards, options) {
+  const { emptyText, actions = [] } = options;
+  target.innerHTML = "";
+  if (!cards.length) {
+    target.innerHTML = `<li class="muted">${emptyText}</li>`;
+    return;
+  }
+
+  cards.forEach((card) => {
+    const item = document.createElement("li");
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = `${card.name} (#${card.id})`;
+
+    const description = document.createElement("div");
+    description.className = "meta";
+    description.textContent = card.description || "No description";
+
+    item.appendChild(title);
+    item.appendChild(description);
+
+    if (actions.length) {
+      const actionBar = document.createElement("div");
+      actionBar.className = "item-actions";
+      actions.forEach((action) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ghost";
+        button.textContent = action.label;
+        button.addEventListener("click", () => action.handler(card.id));
+        actionBar.appendChild(button);
+      });
+      item.appendChild(actionBar);
+    }
+
+    target.appendChild(item);
+  });
+}
+
+function renderHand() {
+  if (!handList) return;
+  renderCardList(handList, handCards, {
+    emptyText: "Draw cards to see them in your hand.",
+    actions: [
+      {
+        label: "Move to workspace",
+        handler: moveHandToWorkspace,
+      },
+    ],
+  });
+}
+
+function renderWorkspace() {
+  if (!workspaceList) return;
+  renderCardList(workspaceList, workspaceCards, {
+    emptyText: "Move cards here to plan your turn.",
+    actions: [
+      {
+        label: "Return to hand",
+        handler: moveWorkspaceToHand,
+      },
+    ],
+  });
+}
+
+function shuffleDeck(cards) {
+  const copy = [...cards];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+async function prepareGameplayArea() {
+  if (!authToken) return;
+  try {
+    const response = await fetch(apiUrl("/cards"));
+    if (!response.ok) {
+      throw new Error(`Unable to load deck: ${response.status}`);
+    }
+    const cards = await response.json();
+    deckCards = shuffleDeck(cards);
+    handCards = [];
+    workspaceCards = [];
+    playerResources = { ...STARTING_RESOURCES };
+    if (gameSection) {
+      gameSection.hidden = false;
+    }
+    renderResources();
+    renderDeckCount();
+    renderHand();
+    renderWorkspace();
+    log(`Gameplay ready with ${deckCards.length} card(s) in the deck.`);
+  } catch (error) {
+    log(error.message, true);
+  }
+}
+
+function drawFromDeck() {
+  if (!authToken) {
+    log("Login first to draw a card.", true);
+    return;
+  }
+  if (!deckCards.length) {
+    log("Deck is empty. Reset the table to load cards again.", true);
+    return;
+  }
+  const card = deckCards.pop();
+  handCards.push(card);
+  renderDeckCount();
+  renderHand();
+}
+
+function moveHandToWorkspace(cardId) {
+  const index = handCards.findIndex((card) => card.id === cardId);
+  if (index === -1) return;
+  const [card] = handCards.splice(index, 1);
+  workspaceCards.push(card);
+  renderHand();
+  renderWorkspace();
+}
+
+function moveWorkspaceToHand(cardId) {
+  const index = workspaceCards.findIndex((card) => card.id === cardId);
+  if (index === -1) return;
+  const [card] = workspaceCards.splice(index, 1);
+  handCards.push(card);
+  renderWorkspace();
+  renderHand();
+}
+
+async function restoreSession() {
   const savedToken = localStorage.getItem(STORAGE_KEYS.authToken);
   const savedUser = localStorage.getItem(STORAGE_KEYS.user);
   if (savedToken && savedUser) {
@@ -100,7 +286,8 @@ function restoreSession() {
       setAuthSession(savedToken, parsedUser);
       setUserInfo();
       log("Restored previous session.");
-      loadRooms();
+      await loadRooms();
+      await prepareGameplayArea();
     } catch (error) {
       handleAuthFailure();
     }
@@ -131,6 +318,7 @@ async function handleGuestLogin(event) {
     log(`Logged in as ${currentUser.display_name}`);
     setUserInfo();
     await loadRooms();
+    await prepareGameplayArea();
   } catch (error) {
     log(error.message, true);
   }
@@ -477,6 +665,8 @@ function wireEvents() {
   refreshDecksButton.addEventListener("click", loadDecks);
   cardForm.addEventListener("submit", createCard);
   deckForm.addEventListener("submit", createDeck);
+  drawCardButton.addEventListener("click", drawFromDeck);
+  resetGameplayButton.addEventListener("click", prepareGameplayArea);
 }
 
 wireEvents();
