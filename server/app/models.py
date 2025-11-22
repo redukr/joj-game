@@ -84,7 +84,12 @@ class LoginRequest(SQLModel):
 
 class RoomCreate(SQLModel):
     name: str
-    max_players: int = Field(4, ge=2, le=12)
+    max_players: int = Field(
+        ..., ge=2, le=6, description="Number of players (must be between 2 and 6)"
+    )
+    max_spectators: int = Field(
+        ..., ge=0, le=10, description="Maximum spectators allowed (up to 10)"
+    )
     visibility: str = Field("private", description="private or public")
 
 
@@ -93,6 +98,7 @@ class Room(SQLModel, table=True):
     name: str
     host_user_id: str = Field(foreign_key="user.id")
     max_players: int
+    max_spectators: int
     visibility: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -102,6 +108,7 @@ class RoomRead(SQLModel):
     name: str
     host_user_id: str
     max_players: int
+    max_spectators: int
     visibility: str
     created_at: datetime
 

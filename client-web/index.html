@@ -60,6 +60,30 @@
             <span>Room name</span>
             <input id="roomName" name="roomName" type="text" required placeholder="Briefing Room" />
           </label>
+          <label class="field">
+            <span>Max players (2-6)</span>
+            <input
+              id="maxPlayers"
+              name="maxPlayers"
+              type="number"
+              min="2"
+              max="6"
+              required
+              value="4"
+            />
+          </label>
+          <label class="field">
+            <span>Max spectators (0-10)</span>
+            <input
+              id="maxSpectators"
+              name="maxSpectators"
+              type="number"
+              min="0"
+              max="10"
+              required
+              value="0"
+            />
+          </label>
           <button type="submit">Create room</button>
         </form>
         <p class="hint">Requires a logged-in user; uses your bearer token automatically.</p>

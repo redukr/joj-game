@@ -359,7 +359,8 @@ function renderRooms(rooms) {
     const metaBits = [
       `Host: ${room.host_user_id}`,
       `Code: ${room.code}`,
-      `Max: ${room.max_players}`,
+      `Players: ${room.max_players}`,
+      `Spectators: ${room.max_spectators}`,
       `Visibility: ${room.visibility}`,
     ];
     meta.textContent = metaBits.join(" | ");
@@ -373,12 +374,25 @@ function renderRooms(rooms) {
 async function createRoom(event) {
   event.preventDefault();
   const roomName = document.getElementById("roomName").value.trim();
+  const maxPlayers = parseInt(document.getElementById("maxPlayers").value, 10);
+  const maxSpectators = parseInt(
+    document.getElementById("maxSpectators").value,
+    10
+  );
   if (!authToken) {
     log("Login first to create a room.", true);
     return;
   }
   if (!roomName) {
     log("Room name is required", true);
+    return;
+  }
+  if (Number.isNaN(maxPlayers)) {
+    log("Enter how many players can join the room.", true);
+    return;
+  }
+  if (Number.isNaN(maxSpectators)) {
+    log("Enter how many spectators are allowed (0-10).", true);
     return;
   }
 
@@ -389,7 +403,11 @@ async function createRoom(event) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken}`,
       },
-      body: JSON.stringify({ name: roomName }),
+      body: JSON.stringify({
+        name: roomName,
+        max_players: maxPlayers,
+        max_spectators: maxSpectators,
+      }),
     });
 
     if (!response.ok) {
