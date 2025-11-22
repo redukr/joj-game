@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -18,6 +19,7 @@ app = FastAPI(title="JOJ Game Server", version="0.1.0")
 allowed_origins = settings.allowed_origins
 
 client_web_dir = Path(__file__).resolve().parents[2] / "client-web"
+client_web_available = client_web_dir.is_dir()
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,11 +29,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount(
-    "/client-web",
-    StaticFiles(directory=client_web_dir, html=True),
-    name="client-web",
-)
+if client_web_available:
+    app.mount(
+        "/client-web",
+        StaticFiles(directory=client_web_dir, html=True),
+        name="client-web",
+    )
+else:
+    logging.getLogger(__name__).warning(
+        "Client web directory %s not found; skipping static mount", client_web_dir
+    )
 
 app.include_router(auth.router)
 app.include_router(cards.router)
@@ -47,7 +54,7 @@ def root():
         "message": "JOJ Game server is running",
         "docs_url": "/docs",
         "openapi_url": "/openapi.json",
-        "web_client_url": "/client-web/",
+        "web_client_url": "/client-web/" if client_web_available else None,
     }
 
 
