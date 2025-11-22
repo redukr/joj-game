@@ -1,0 +1,23 @@
+Manual: Running the JOJ Game server and web client
+===============================================
+
+Server setup and launch
+-----------------------
+1) Ensure Python 3.11+ is available. From the repository root, enter the server folder and create a virtual environment:
+   cd server
+   python -m venv .venv
+   source .venv/bin/activate
+2) Install backend dependencies:
+   pip install -r requirements.txt
+3) (Optional) Configure environment values such as an admin token and allowed OAuth providers by creating a .env file:
+   echo "ADMIN_TOKEN=supersecret" > .env
+   echo "ALLOWED_OAUTH_PROVIDERS=apple,google,guest" >> .env
+4) Start the FastAPI server in development mode:
+   uvicorn app.main:app --reload
+
+Web client setup and launch
+---------------------------
+1) In another shell, serve the static web client from the client-web directory (no build step is required):
+   cd client-web
+   python -m http.server 8001
+2) Open http://localhost:8001/ in your browser. In the UI, set the API base URL to the FastAPI server address (defaults to http://localhost:8000).

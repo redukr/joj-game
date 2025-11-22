@@ -21,6 +21,24 @@
       <p class="hint">Update this if your server runs on a different host or port.</p>
     </section>
 
+    <section class="card">
+      <h2>Admin access</h2>
+      <label class="field">
+        <span>Admin token</span>
+        <input
+          id="adminToken"
+          name="adminToken"
+          type="password"
+          autocomplete="off"
+          placeholder="Paste the server ADMIN_TOKEN value"
+        />
+      </label>
+      <p class="hint">Needed for the /admin API. Stored only in this page during your session.</p>
+      <div class="actions">
+        <button id="refreshAdminData" type="button">Load cards & decks</button>
+      </div>
+    </section>
+
     <section class="grid">
       <article class="card">
         <h2>Guest login</h2>
@@ -55,6 +73,64 @@
         </div>
       </div>
       <ul id="roomsList" class="list"></ul>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-header">
+          <h2>Cards</h2>
+          <div class="actions">
+            <button id="refreshCards" type="button">Refresh</button>
+          </div>
+        </div>
+        <form id="cardForm">
+          <label class="field">
+            <span>Name</span>
+            <input id="cardName" name="cardName" type="text" required placeholder="Surprise Event" />
+          </label>
+          <label class="field">
+            <span>Description</span>
+            <input
+              id="cardDescription"
+              name="cardDescription"
+              type="text"
+              required
+              placeholder="Something unexpected happens"
+            />
+          </label>
+          <label class="field">
+            <span>Category (optional)</span>
+            <input id="cardCategory" name="cardCategory" type="text" placeholder="chaos" />
+          </label>
+          <button type="submit">Create card</button>
+        </form>
+        <ul id="cardsList" class="list"></ul>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2>Decks</h2>
+          <div class="actions">
+            <button id="refreshDecks" type="button">Refresh</button>
+          </div>
+        </div>
+        <form id="deckForm">
+          <label class="field">
+            <span>Name</span>
+            <input id="deckName" name="deckName" type="text" required placeholder="Starter Deck" />
+          </label>
+          <label class="field">
+            <span>Description (optional)</span>
+            <input id="deckDescription" name="deckDescription" type="text" placeholder="Default cards" />
+          </label>
+          <label class="field">
+            <span>Card IDs (comma separated)</span>
+            <input id="deckCardIds" name="deckCardIds" type="text" placeholder="1,2,3" />
+          </label>
+          <button type="submit">Create deck</button>
+        </form>
+        <ul id="decksList" class="list"></ul>
+      </article>
     </section>
 
     <section class="card">

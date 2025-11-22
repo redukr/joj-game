@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     @validator("allowed_oauth_providers", "allowed_origins", pre=True)
     def _split_providers(cls, value):  # noqa: N805
+    def _split_csv(cls, value):  # noqa: N805
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
