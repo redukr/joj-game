@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JOJ Game Web Client</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>JOJ Game Web Client</h1>
+      <p class="subtitle">Interact with the FastAPI server from your browser.</p>
+    </header>
+
+    <section class="card">
+      <h2>Server connection</h2>
+      <label class="field">
+        <span>API base URL</span>
+        <input id="apiBase" type="url" value="http://localhost:8000" />
+      </label>
+      <p class="hint">Update this if your server runs on a different host or port.</p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Guest login</h2>
+        <form id="guestLoginForm">
+          <label class="field">
+            <span>Display name</span>
+            <input id="displayName" name="displayName" type="text" required placeholder="Battle Planner" />
+          </label>
+          <button type="submit">Sign in as guest</button>
+        </form>
+        <div id="userInfo" class="muted"></div>
+      </article>
+
+      <article class="card">
+        <h2>Create room</h2>
+        <form id="roomForm">
+          <label class="field">
+            <span>Room name</span>
+            <input id="roomName" name="roomName" type="text" required placeholder="Briefing Room" />
+          </label>
+          <button type="submit">Create room</button>
+        </form>
+        <p class="hint">Requires a logged-in user; uses your bearer token automatically.</p>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Rooms</h2>
+        <div class="actions">
+          <button id="refreshRooms">Refresh</button>
+        </div>
+      </div>
+      <ul id="roomsList" class="list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Status</h2>
+      <pre id="statusArea" class="status"></pre>
+    </section>
+
+    <script src="main.js"></script>
+  </body>
+</html>
