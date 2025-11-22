@@ -24,6 +24,12 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    echo "ADMIN_TOKEN=supersecret" > .env
    echo "ALLOWED_OAUTH_PROVIDERS=apple,google,guest" >> .env
    ```
+   You can also copy `config/settings.yaml` and tweak it for local overrides. To load a custom file, point
+   `SETTINGS_FILE` at its path:
+   ```bash
+   cp config/settings.yaml config/settings.local.yaml
+   SETTINGS_FILE=config/settings.local.yaml uvicorn app.main:app --reload
+   ```
 4. Start a local dev server:
    ```bash
    uvicorn app.main:app --reload

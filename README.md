@@ -41,6 +41,7 @@
 ## 🖥️ Технічна архітектура
 joj-game/
 ├── server/ (FastAPI)
+├── client-web/ (static HTML/JS web client)
 ├── client/ (React або HTML/JS)
 ├── cards/ (JSON-файли)
 └── README.md
