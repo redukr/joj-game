@@ -13,8 +13,11 @@ def _validate_login_payload(payload: LoginRequest, settings):
         raise HTTPException(status_code=400, detail="Unsupported provider")
     if payload.provider in {Provider.APPLE, Provider.GOOGLE} and not payload.token:
         raise HTTPException(status_code=400, detail="OAuth token is required for this provider")
-    if payload.provider == Provider.GUEST and not payload.display_name:
-        raise HTTPException(status_code=400, detail="Guest login requires a display name")
+    if payload.provider == Provider.GUEST:
+        if not payload.display_name:
+            raise HTTPException(status_code=400, detail="Guest login requires a display name")
+        if not payload.password:
+            raise HTTPException(status_code=400, detail="Guest login requires a password")
 
 
 @router.post("/login", response_model=AuthResponse)
