@@ -38,13 +38,7 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
         var credential = await LoadCredentialAsync(cancellationToken);
         if (credential is null)
         {
-            return new AuthenticationResult
-            {
-                Success = false,
-                Role = null,
-                Message = "Credential store is corrupted. Delete it to register again.",
-                CreatedNewCredential = false
-            };
+            return CorruptedCredentialResult();
         }
 
         if (!string.Equals(credential.Username, username, StringComparison.OrdinalIgnoreCase))
@@ -58,7 +52,25 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
             };
         }
 
-        var verified = PasswordHasher.Verify(password, credential.Salt, credential.PasswordHash);
+        if (string.IsNullOrWhiteSpace(credential.Salt) || string.IsNullOrWhiteSpace(credential.PasswordHash))
+        {
+            return CorruptedCredentialResult();
+        }
+
+        bool verified;
+        try
+        {
+            verified = PasswordHasher.Verify(password, credential.Salt, credential.PasswordHash);
+        }
+        catch (FormatException)
+        {
+            return CorruptedCredentialResult();
+        }
+        catch (ArgumentException)
+        {
+            return CorruptedCredentialResult();
+        }
+
         return new AuthenticationResult
         {
             Success = verified,
@@ -109,5 +121,16 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
         {
             return null;
         }
+    }
+
+    private static AuthenticationResult CorruptedCredentialResult()
+    {
+        return new AuthenticationResult
+        {
+            Success = false,
+            Role = null,
+            Message = "Credential store is corrupted. Delete it to register again.",
+            CreatedNewCredential = false
+        };
     }
 }
