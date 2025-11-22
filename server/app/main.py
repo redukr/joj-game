@@ -7,7 +7,7 @@ from pathlib import Path
 from app.db import init_db, session_scope
 from app.loaders import load_cards_from_disk
 from app.models import Card
-from app.routes import admin, auth, rooms
+from app.routes import admin, auth, cards, rooms
 
 settings = get_settings()
 
@@ -24,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(cards.router)
 app.include_router(admin.router)
 app.include_router(rooms.router)
 
