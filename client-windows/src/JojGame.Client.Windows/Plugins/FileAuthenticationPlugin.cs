@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using JojGame.Client.Windows.Models;
 using JojGame.Client.Windows.Utilities;
@@ -52,7 +53,38 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
             };
         }
 
-        if (string.IsNullOrWhiteSpace(credential.Salt) || string.IsNullOrWhiteSpace(credential.PasswordHash))
+        if (!IsValidBase64(credential.Salt) || !IsValidBase64(credential.PasswordHash))
+        {
+            return new AuthenticationResult
+            {
+                Success = false,
+                Role = null,
+                Message = "Credential store is corrupted. Delete it to register again.",
+                CreatedNewCredential = false
+            };
+            return CorruptedCredentialResult();
+        }
+
+        bool verified;
+        try
+        {
+            verified = PasswordHasher.Verify(password, credential.Salt, credential.PasswordHash);
+        }
+        catch
+        {
+            return new AuthenticationResult
+            {
+                Success = false,
+                Role = null,
+                Message = "Credential store is corrupted. Delete it to register again.",
+                CreatedNewCredential = false
+            };
+        }
+        catch (FormatException)
+        {
+            return CorruptedCredentialResult();
+        }
+        catch (ArgumentException)
         {
             return CorruptedCredentialResult();
         }
@@ -62,13 +94,15 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
         {
             verified = PasswordHasher.Verify(password, credential.Salt, credential.PasswordHash);
         }
-        catch (FormatException)
+        catch
         {
-            return CorruptedCredentialResult();
-        }
-        catch (ArgumentException)
-        {
-            return CorruptedCredentialResult();
+            return new AuthenticationResult
+            {
+                Success = false,
+                Role = null,
+                Message = "Credential store is corrupted. Delete it to register again.",
+                CreatedNewCredential = false
+            };
         }
 
         return new AuthenticationResult
@@ -132,5 +166,17 @@ public sealed class FileAuthenticationPlugin : IAuthenticationPlugin
             Message = "Credential store is corrupted. Delete it to register again.",
             CreatedNewCredential = false
         };
+    }
+
+    private static bool IsValidBase64(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        Span<byte> buffer = stackalloc byte[value.Length];
+        var buffer = new Span<byte>(new byte[value.Length]);
+        return Convert.TryFromBase64String(value, buffer, out _);
     }
 }

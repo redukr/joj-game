@@ -8,9 +8,11 @@ settings = get_settings()
 
 app = FastAPI(title="JOJ Game Server", version="0.1.0")
 
+allowed_origins = list({*settings.allowed_origins, "http://localhost:8001", "http://127.0.0.1:8001"})
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
