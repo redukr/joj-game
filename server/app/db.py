@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from sqlalchemy.exc import OperationalError
+from sqlalchemy import inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import get_settings
@@ -44,11 +45,24 @@ def _add_missing_max_spectators_column() -> None:
             message = str(getattr(error, "orig", error)).lower()
             if "duplicate column name" not in message:
                 raise
+def _apply_migrations() -> None:
+    inspector = inspect(engine)
+    room_columns = {column_info["name"] for column_info in inspector.get_columns("room")}
+
+    if "max_spectators" not in room_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE room "
+                    "ADD COLUMN max_spectators INTEGER NOT NULL DEFAULT 0"
+                )
+            )
 
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
     _add_missing_max_spectators_column()
+    _apply_migrations()
 
 
 @contextmanager

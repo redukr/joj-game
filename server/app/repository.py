@@ -1,4 +1,4 @@
-import secrets
+import hashlib
 import secrets
 from typing import List, Optional, Tuple
 
@@ -116,12 +116,30 @@ class Repository:
         }
 
     # Auth helpers
-    def _generate_user(self, provider: Provider, display_name: str) -> User:
+    def _hash_password(self, password: str) -> str:
+        return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+    def _generate_user(
+        self, provider: Provider, display_name: str, password_hash: str | None
+    ) -> User:
         user_id = secrets.token_urlsafe(8)
-        user = User(id=user_id, provider=provider, display_name=display_name)
+        user = User(
+            id=user_id,
+            provider=provider,
+            display_name=display_name,
+            password_hash=password_hash,
+        )
         self.session.add(user)
         self.session.flush()
         return user
+
+    def _get_user_by_display_name(
+        self, provider: Provider, display_name: str
+    ) -> User | None:
+        statement = select(User).where(
+            User.provider == provider, User.display_name == display_name
+        )
+        return self.session.exec(statement).first()
 
     def _issue_token(self, user_id: str) -> str:
         token_value = secrets.token_urlsafe(32)
@@ -132,7 +150,29 @@ class Repository:
 
     def create_user(self, payload: LoginRequest) -> AuthResponse:
         display_name = payload.display_name or payload.provider.value.title()
-        user = self._generate_user(payload.provider, display_name)
+        password_hash = None
+        if payload.password:
+            password_hash = self._hash_password(payload.password)
+
+        existing_user = None
+        if payload.provider == Provider.GUEST and payload.display_name:
+            existing_user = self._get_user_by_display_name(
+                payload.provider, payload.display_name
+            )
+
+        if existing_user:
+            if existing_user.password_hash and existing_user.password_hash != password_hash:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Incorrect password for existing user",
+                )
+            if not existing_user.password_hash:
+                existing_user.password_hash = password_hash
+                self.session.add(existing_user)
+                self.session.flush()
+            user = existing_user
+        else:
+            user = self._generate_user(payload.provider, display_name, password_hash)
         token = self._issue_token(user.id)
         return AuthResponse(access_token=token, user=UserRead.from_orm(user))
 

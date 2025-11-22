@@ -16,6 +16,22 @@ header {
   margin-bottom: 1rem;
 }
 
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.language-switcher {
+  min-width: 220px;
+}
+
+.language-switcher .field {
+  margin-bottom: 0;
+}
+
 h1 {
   margin: 0;
   font-size: 1.8rem;
