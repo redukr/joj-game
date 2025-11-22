@@ -1,0 +1,31 @@
+<Window x:Class="JojGame.Client.Windows.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="JOJ Game - Windows Client" Height="320" Width="420"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Text="Sign in or create your first local password" FontSize="16" FontWeight="Bold" />
+
+        <StackPanel Grid.Row="1" Margin="0,16,0,0">
+            <TextBlock Text="Username" />
+            <TextBox x:Name="UsernameTextBox" Height="32" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Margin="0,12,0,0">
+            <TextBlock Text="Password" />
+            <PasswordBox x:Name="PasswordBox" Height="32" />
+        </StackPanel>
+
+        <Button Grid.Row="3" Content="Authenticate" Height="36" Margin="0,16,0,0" Click="OnAuthenticateClick" />
+
+        <TextBlock Grid.Row="4" x:Name="StatusText" Margin="0,16,0,0" TextWrapping="Wrap"
+                   Foreground="DarkSlateGray" />
+    </Grid>
+</Window>
