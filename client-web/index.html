@@ -34,6 +34,7 @@
         />
       </label>
       <p class="hint">Needed for the /admin API. Stored only in this page during your session.</p>
+      <p class="hint">Admin tools appear once a token is provided.</p>
       <div class="actions">
         <button id="refreshAdminData" type="button">Load cards & decks</button>
       </div>
@@ -76,7 +77,7 @@
     </section>
 
     <section class="grid">
-      <article class="card">
+      <article class="card" data-admin-only>
         <div class="card-header">
           <h2>Cards</h2>
           <div class="actions">
@@ -107,7 +108,7 @@
         <ul id="cardsList" class="list"></ul>
       </article>
 
-      <article class="card">
+      <article class="card" data-admin-only>
         <div class="card-header">
           <h2>Decks</h2>
           <div class="actions">
