@@ -14,9 +14,11 @@ class Provider(str, Enum):
 
 
 class CardBase(SQLModel):
-    name: str = Field(..., example="Ляп на брифінгу")
-    description: str = Field(..., example="Втрачено репутацію через невдалий виступ")
-    category: Optional[str] = Field(None, example="scandal")
+    name: str = Field(..., description="Card name (e.g., 'Ляп на брифінгу')")
+    description: str = Field(
+        ..., description="Card description (e.g., 'Втрачено репутацію через невдалий виступ')"
+    )
+    category: Optional[str] = Field(None, description="Card category (e.g., 'scandal')")
 
 
 class Card(CardBase, table=True):
