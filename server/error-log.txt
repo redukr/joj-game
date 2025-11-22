@@ -1,0 +1,6 @@
+[22.11.2025 18:01:42,02] Starting server setup 
+[INFO] Creating Python virtual environment in server\.venv...
+Access is denied.
+[ERROR] Failed to create virtual environment. Ensure you have write permissions to C:\Users\GDF\Desktop\??\joj-game\server.
+        If .venv already exists, close any processes using it and delete it before retrying.
+[ERROR] Failed to start the server. See C:\Users\GDF\Desktop\??\joj-game\server\error-log.txt for details.
