@@ -18,6 +18,7 @@ const cardForm = document.getElementById("cardForm");
 const deckForm = document.getElementById("deckForm");
 const cardsList = document.getElementById("cardsList");
 const decksList = document.getElementById("decksList");
+const adminOnlySections = document.querySelectorAll("[data-admin-only]");
 
 let authToken = null;
 let currentUser = null;
@@ -60,6 +61,20 @@ function adminHeaders() {
     "Content-Type": "application/json",
     "X-Admin-Token": requireAdminToken(),
   };
+}
+
+function hasAdminToken() {
+  return Boolean(adminTokenInput.value.trim());
+}
+
+function syncAdminUi() {
+  const adminMode = hasAdminToken();
+  adminOnlySections.forEach((section) => {
+    section.hidden = !adminMode;
+  });
+  [refreshAdminDataButton, refreshCardsButton, refreshDecksButton].forEach((button) => {
+    button.disabled = !adminMode;
+  });
 }
 
 function setUserInfo() {
@@ -456,6 +471,7 @@ function wireEvents() {
   guestLoginForm.addEventListener("submit", handleGuestLogin);
   roomForm.addEventListener("submit", createRoom);
   refreshRoomsButton.addEventListener("click", loadRooms);
+  adminTokenInput.addEventListener("input", syncAdminUi);
   refreshAdminDataButton.addEventListener("click", loadAdminData);
   refreshCardsButton.addEventListener("click", loadCards);
   refreshDecksButton.addEventListener("click", loadDecks);
@@ -464,6 +480,7 @@ function wireEvents() {
 }
 
 wireEvents();
+syncAdminUi();
 setUserInfo();
 restoreSession();
 log("Ready. Set your API base URL, sign in as a guest, or manage decks with the admin token.");
