@@ -20,5 +20,5 @@ Web client setup and launch
 1) In another shell, serve the static web client from the client-web directory (no build step is required):
    cd client-web
    python -m http.server 8001
-2) Open http://localhost:8001/ in your browser. In the UI, set the API base URL to the FastAPI server address (defaults to http://localhost:8000).
-   If you serve the web client from a different origin, update the allowed origins in server/app/main.py or proxy the API through the same host and port to avoid CORS errors.
+   The API server allows cross-origin calls from http://localhost:8001 and http://127.0.0.1:8001 by default.
+2) Open http://localhost:8001/ in your browser. In the UI, set the API base URL to the FastAPI server address (defaults to http://localhost:8000). If you change the client port, update the API server's allowed origins accordingly.
