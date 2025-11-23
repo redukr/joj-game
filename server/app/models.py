@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import List, Optional
 
-from sqlalchemy import Column
+from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy.dialects.sqlite import JSON
 from sqlmodel import Field, SQLModel
 
@@ -14,20 +14,30 @@ class Provider(str, Enum):
 
 
 class CardBase(SQLModel):
-    name: str = Field(..., description="Card name (e.g., 'Ляп на брифінгу')")
-    description: str = Field(
-        ..., description="Card description (e.g., 'Втрачено репутацію через невдалий виступ')"
+    name: str = Field(
+        ...,
+        max_length=128,
+        description="Card name (e.g., 'Ляп на брифінгу')",
     )
-    category: Optional[str] = Field(None, description="Card category (e.g., 'scandal')")
-    time: int = Field(0, description="Time effect for the card (e.g., +1 or -2)")
-    reputation: int = Field(0, description="Reputation effect for the card")
-    discipline: int = Field(0, description="Discipline effect for the card")
-    documents: int = Field(0, description="Documents effect for the card")
-    technology: int = Field(0, description="Technology effect for the card")
+    description: str = Field(
+        ...,
+        max_length=512,
+        description="Card description (e.g., 'Втрачено репутацію через невдалий виступ')",
+    )
+    category: Optional[str] = Field(
+        None, max_length=64, description="Card category (e.g., 'scandal')"
+    )
+    time: int = Field(0, ge=-10, le=10, description="Time effect for the card (e.g., +1 or -2)")
+    reputation: int = Field(0, ge=-10, le=10, description="Reputation effect for the card")
+    discipline: int = Field(0, ge=-10, le=10, description="Discipline effect for the card")
+    documents: int = Field(0, ge=-10, le=10, description="Documents effect for the card")
+    technology: int = Field(0, ge=-10, le=10, description="Technology effect for the card")
 
 
 class Card(CardBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    __table_args__ = (UniqueConstraint("name", "category", name="uq_card_name_category"),)
 
 
 class CardRead(CardBase):
@@ -80,6 +90,7 @@ class Token(SQLModel, table=True):
     user_id: str = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=12))
+    revoked_at: datetime | None = None
 
 
 class AuthResponse(SQLModel):
