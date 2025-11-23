@@ -58,6 +58,14 @@ def _extract_token(request: Request, credentials: HTTPAuthorizationCredentials) 
         raise
 
 
+def get_bearer_token(
+    request: Request, credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
+) -> str:
+    """Return the bearer token string from the Authorization header."""
+
+    return _extract_token(request, credentials)
+
+
 def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),

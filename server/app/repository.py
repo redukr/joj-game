@@ -285,6 +285,16 @@ class Repository:
             .values(revoked_at=datetime.utcnow())
         )
 
+    def revoke_token(self, token_value: str) -> None:
+        token = self.session.get(Token, token_value)
+        if not token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+        if token.revoked_at is None:
+            token.revoked_at = datetime.utcnow()
+            self.session.add(token)
+            self.session.flush()
+
     def _cleanup_expired_tokens(self) -> None:
         now = datetime.utcnow()
         self.session.exec(delete(Token).where(Token.expires_at < now))
@@ -342,6 +352,55 @@ class Repository:
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token owner")
         return UserRead.from_orm(user)
+
+    def change_password(self, user_id: str, current_password: str, new_password: str) -> AuthResponse:
+        user = self.session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if user.provider != Provider.GUEST:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password changes are only supported for guest accounts",
+            )
+        if not self._verify_password(current_password, user.password_hash or ""):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Current password is incorrect",
+            )
+
+        user.password_hash = self._hash_password(new_password)
+        self.session.add(user)
+        self._revoke_user_tokens(user_id)
+        token = self._issue_token(user_id)
+        return AuthResponse(access_token=token, user=UserRead.from_orm(user))
+
+    def ensure_admin_user(self, username: str, password: str) -> None:
+        existing_user = self._get_user_by_display_name(Provider.GUEST, username)
+        desired_hash = self._hash_password(password)
+
+        if existing_user:
+            needs_update = False
+            if existing_user.role != Role.ADMIN:
+                existing_user.role = Role.ADMIN
+                needs_update = True
+            if not self._verify_password(password, existing_user.password_hash or ""):
+                existing_user.password_hash = desired_hash
+                needs_update = True
+            if needs_update:
+                self._revoke_user_tokens(existing_user.id)
+                self.session.add(existing_user)
+                self.session.flush()
+            return
+
+        user = User(
+            id=username,
+            provider=Provider.GUEST,
+            display_name=username,
+            password_hash=desired_hash,
+            role=Role.ADMIN,
+        )
+        self.session.add(user)
+        self.session.flush()
 
     # Room helpers
     def _generate_unique_code(self) -> str:
