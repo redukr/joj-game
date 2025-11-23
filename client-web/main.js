@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   authToken: "joj-auth-token",
   user: "joj-user",
+  apiBase: "joj-api-base",
   roomCode: "joj-room-code",
 };
 
@@ -527,6 +528,17 @@ function apiUrl(path) {
   return `${apiBaseInput.value.replace(/\/$/, "")}${path}`;
 }
 
+function persistApiBase() {
+  if (!apiBaseInput) return;
+  const savedApiBase = localStorage.getItem(STORAGE_KEYS.apiBase);
+  if (savedApiBase) {
+    apiBaseInput.value = savedApiBase;
+  }
+  apiBaseInput.addEventListener("input", () => {
+    localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
+  });
+}
+
 function requireAdminToken() {
   if (!adminTokenInput) {
     throw new Error(t("messages.adminTokenRequired"));
@@ -884,6 +896,10 @@ async function authenticateGuest(successMessageKey) {
   if (!credentials) return;
 
   try {
+    if (apiBaseInput) {
+      localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
+    }
+
     const response = await fetch(apiUrl("/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1437,6 +1453,7 @@ function wireEvents() {
     });
 }
 
+persistApiBase();
 setLanguage(currentLanguage);
 wireEvents();
 syncAdminUi();
