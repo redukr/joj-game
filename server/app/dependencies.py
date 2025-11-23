@@ -28,6 +28,7 @@ def require_admin(
 
 _logger = logging.getLogger(__name__)
 bearer_scheme = HTTPBearer(auto_error=True)
+optional_bearer_scheme = HTTPBearer(auto_error=False)
 _failed_attempts: defaultdict[str, Deque[float]] = defaultdict(deque)
 ATTEMPT_WINDOW_SECONDS = 60
 MAX_FAILED_ATTEMPTS = 10
@@ -74,7 +75,7 @@ def get_current_user(
 
 def get_optional_user(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer_scheme),
     repo: Repository = Depends(get_repository),
 ):
     if not credentials:
