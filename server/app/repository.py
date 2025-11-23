@@ -276,7 +276,7 @@ class Repository:
             provider=provider,
             display_name=display_name,
             password_hash=password_hash,
-            role=Role.USER,
+            role=Role.USER.value,
         )
         self.session.add(user)
         self.session.flush()
@@ -400,8 +400,8 @@ class Repository:
 
         if existing_user:
             needs_update = False
-            if existing_user.role != Role.ADMIN:
-                existing_user.role = Role.ADMIN
+            if existing_user.role != Role.ADMIN.value:
+                existing_user.role = Role.ADMIN.value
                 needs_update = True
             if not self._verify_password(password, existing_user.password_hash or ""):
                 existing_user.password_hash = desired_hash
@@ -417,7 +417,7 @@ class Repository:
             provider=Provider.GUEST,
             display_name=username,
             password_hash=desired_hash,
-            role=Role.ADMIN,
+            role=Role.ADMIN.value,
         )
         self.session.add(user)
         self.session.flush()

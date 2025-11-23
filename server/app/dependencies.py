@@ -93,6 +93,6 @@ def require_admin(
 ):
     if x_admin_token and x_admin_token == settings.admin_token:
         return
-    if current_user and current_user.role == Role.ADMIN:
+    if current_user and current_user.role == Role.ADMIN.value:
         return
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin access required")

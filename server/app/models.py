@@ -13,14 +13,14 @@ class Role(str, Enum):
     USER = "user"
 
 
-def _normalize_role_value(value: Role | str | None) -> Role:
+def _normalize_role_value(value: Role | str | None) -> str:
     if isinstance(value, Role):
-        return value
+        return value.value
     if isinstance(value, str):
         lowered = value.strip().lower()
         if lowered in Role._value2member_map_:
-            return Role(lowered)
-    return Role.USER
+            return lowered
+    return Role.USER.value
 
 
 class Provider(str, Enum):
@@ -90,13 +90,13 @@ class User(SQLModel, table=True):
     provider: Provider
     display_name: str
     password_hash: str | None = Field(default=None, description="Hashed password for local auth")
-    role: Role = Field(
-        default=Role.USER,
+    role: str = Field(
+        default=Role.USER.value,
         sa_column=Column(String, nullable=False),
     )
 
     @validator("role", pre=True)
-    def normalize_role(cls, value: Role | str | None) -> Role:  # noqa: N805
+    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
         return _normalize_role_value(value)
 
 
@@ -104,10 +104,10 @@ class UserRead(SQLModel):
     id: str
     provider: Provider
     display_name: str
-    role: Role
+    role: str
 
     @validator("role", pre=True)
-    def normalize_role(cls, value: Role | str | None) -> Role:  # noqa: N805
+    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
         return _normalize_role_value(value)
 
     class Config:
@@ -115,10 +115,10 @@ class UserRead(SQLModel):
 
 
 class UserRoleUpdate(SQLModel):
-    role: Role
+    role: str
 
     @validator("role", pre=True)
-    def normalize_role(cls, value: Role | str | None) -> Role:  # noqa: N805
+    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
         return _normalize_role_value(value)
 
 
