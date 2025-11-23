@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   user: "joj-user",
   apiBase: "joj-api-base",
   roomCode: "joj-room-code",
+  adminToken: "joj-admin-token",
 };
 
 const LANGUAGE_STORAGE_KEY = "joj-language";
@@ -20,15 +21,22 @@ const TRANSLATIONS = {
       admin: {
         heading: "Administrative tools",
         subheading:
-          "Manage cards and decks with an admin token supplied by the server.",
+          "Manage cards, decks, users, and rooms with admin privileges.",
       },
       management: {
         heading: "Management hub",
         subheading:
-          "Choose which module to manage: system, players, cards, or decks.",
+          "Admin-only shortcuts for monitoring users, rooms, cards, or decks.",
       },
     },
     language: { label: "Language" },
+    session: {
+      apiLabel: "API base",
+      userLabel: "User",
+      roomLabel: "Room",
+      roleLabel: "Role",
+      roleGuest: "Guest (not signed in)",
+    },
     server: {
       heading: "Server connection",
       apiBase: "API base URL",
@@ -36,16 +44,17 @@ const TRANSLATIONS = {
     },
     admin: {
       heading: "Admin access",
-      token: "Admin token",
+      roleHint: "Sign in with an admin account or provide the ADMIN_TOKEN to unlock these controls.",
+      loadData: "Load admin data",
+      tokenLabel: "Admin token",
       tokenPlaceholder: "Paste the server ADMIN_TOKEN value",
-      hint1: "Needed for the /admin API. Stored only in this page during your session.",
-      hint2: "Admin tools appear once a token is provided.",
-      loadData: "Load cards & decks",
+      tokenHint:
+        "Paste the ADMIN_TOKEN from your server configuration to bootstrap admin actions without an admin account.",
       status: {
-        idle: "Enter the admin token to unlock tools.",
-        checking: "Checking admin token...",
-        valid: "Admin token validated.",
-        invalid: "Admin token invalid.",
+        idle: "Admin access required to load data.",
+        checking: "Checking admin access...",
+        valid: "Admin session ready via token or role.",
+        invalid: "Admin access unavailable.",
       },
     },
     login: {
@@ -92,6 +101,10 @@ const TRANSLATIONS = {
         closed: "Closed",
         full: "Full",
       },
+      adminHeading: "Rooms",
+      adminHint: "Inspect active rooms and remove stale ones.",
+      adminEmpty: "No rooms found.",
+      delete: "Delete",
     },
     game: {
       heading: "Gameplay workspace",
@@ -173,9 +186,16 @@ const TRANSLATIONS = {
       },
       delete: "Delete",
     },
+    users: {
+      heading: "Users",
+      refresh: "Refresh",
+      hint: "Review users, assign roles, or remove accounts.",
+      listEmpty: "No users found.",
+      role: "Role",
+      delete: "Delete",
+    },
     status: { heading: "Status" },
     messages: {
-      adminTokenRequired: "Enter the admin token first.",
       sessionExpired: "Session expired. Please log in again.",
       sessionRestored: "Restored previous session.",
       loginSuccess: "Logged in as {name}.",
@@ -203,8 +223,6 @@ const TRANSLATIONS = {
       unableLoadDecks: "Unable to load decks: {status}",
       createCardFailed: "Create card failed: {status} {detail}",
       createDeckFailed: "Create deck failed: {status} {detail}",
-      invalidAdminToken: "Invalid admin token.",
-      adminTokenCheckFailed: "Unable to verify admin token: {status}",
       deleteCardFailed: "Delete card failed: {status} {detail}",
       deleteDeckFailed: "Delete deck failed: {status} {detail}",
       exportDeckFailed: "Export failed: {status} {detail}",
@@ -220,9 +238,22 @@ const TRANSLATIONS = {
       deckImported: 'Imported deck "{name}" (#{id}).',
       importDeckInvalid: "Provide valid deck JSON to import.",
       importDeckFailed: "Import failed: {status} {detail}",
-      ready: "Ready. Set your API base URL, register or sign in, or manage decks with the admin token.",
+      ready: "Ready. Set your API base URL, register or sign in, or manage data as an admin.",
       loginFailed: "Login failed: {status}",
       registrationSuccess: "Registered as {name}.",
+      adminRoleRequired:
+        "Admin access required. Provide the ADMIN_TOKEN or sign in as an admin to continue.",
+      unableLoadUsers: "Unable to load users: {status}",
+      unableLoadAdminRooms: "Unable to load rooms for admin: {status}",
+      roleUpdated: "Updated role for {name} to {role}.",
+      deleteUserConfirm: "Delete user {name}? This also removes their rooms.",
+      deletedUser: "Removed user {name}.",
+      deleteUserFailed: "Delete user failed: {status} {detail}",
+      updateRoleFailed: "Update role failed: {status} {detail}",
+      deleteRoomConfirm: "Delete room {code}?",
+      deletedRoom: "Deleted room {code}.",
+      deleteRoomFailed: "Delete room failed: {status} {detail}",
+      adminDataLoaded: "Admin data refreshed.",
     },
   },
   uk: {
@@ -237,15 +268,22 @@ const TRANSLATIONS = {
       admin: {
         heading: "Адміністративні інструменти",
         subheading:
-          "Керуйте картами та колодами за допомогою адмін-токена від сервера.",
+          "Керуйте картами, колодами, користувачами та кімнатами як адміністратор.",
       },
       management: {
         heading: "Центр керування",
         subheading:
-          "Оберіть модуль для керування: система, гравці, карти чи колоди.",
+          "Адмінський хаб для перегляду користувачів, кімнат, карт чи колод.",
       },
     },
     language: { label: "Мова" },
+    session: {
+      apiLabel: "API база",
+      userLabel: "Користувач",
+      roomLabel: "Кімната",
+      roleLabel: "Роль",
+      roleGuest: "Гість (не увійшов)",
+    },
     server: {
       heading: "Підключення до сервера",
       apiBase: "Базова адреса API",
@@ -253,16 +291,18 @@ const TRANSLATIONS = {
     },
     admin: {
       heading: "Доступ адміністратора",
-      token: "Адмін-токен",
+      roleHint:
+        "Увійдіть як адміністратор або надайте ADMIN_TOKEN, щоб увімкнути ці інструменти.",
+      loadData: "Завантажити адмін-дані",
+      tokenLabel: "Адмін-токен",
       tokenPlaceholder: "Вставте значення ADMIN_TOKEN із сервера",
-      hint1: "Потрібен для API /admin. Зберігається лише під час сеансу сторінки.",
-      hint2: "Інструменти адміністратора з'являються після введення токена.",
-      loadData: "Завантажити карти та колоди",
+      tokenHint:
+        "Вставте ADMIN_TOKEN із конфігурації сервера, щоб увімкнути адмін-дії без адмін-акаунта.",
       status: {
-        idle: "Введіть адмін-токен, щоб розблокувати інструменти.",
-        checking: "Перевіряємо адмін-токен...",
-        valid: "Адмін-токен підтверджено.",
-        invalid: "Адмін-токен недійсний.",
+        idle: "Потрібен адмін-доступ для завантаження даних.",
+        checking: "Перевіряємо адмін-доступ...",
+        valid: "Адмін-сесія готова (токен чи роль).",
+        invalid: "Адмін-доступ недоступний.",
       },
     },
     login: {
@@ -309,6 +349,10 @@ const TRANSLATIONS = {
         closed: "Закрито",
         full: "Заповнено",
       },
+      adminHeading: "Кімнати",
+      adminHint: "Переглядайте активні кімнати та прибирайте зайві.",
+      adminEmpty: "Немає кімнат.",
+      delete: "Видалити",
     },
     game: {
       heading: "Робочий простір гри",
@@ -390,9 +434,16 @@ const TRANSLATIONS = {
       },
       delete: "Видалити",
     },
+    users: {
+      heading: "Користувачі",
+      refresh: "Оновити",
+      hint: "Переглядайте користувачів, призначайте ролі або видаляйте обліковки.",
+      listEmpty: "Користувачів не знайдено.",
+      role: "Роль",
+      delete: "Видалити",
+    },
     status: { heading: "Статус" },
     messages: {
-      adminTokenRequired: "Спочатку введіть адмін-токен.",
       sessionExpired: "Сесію завершено. Увійдіть ще раз.",
       sessionRestored: "Попередню сесію відновлено.",
       loginSuccess: "Увійшли як {name}.",
@@ -420,14 +471,9 @@ const TRANSLATIONS = {
       unableLoadDecks: "Не вдалося завантажити колоди: {status}",
       createCardFailed: "Не вдалося створити карту: {status} {detail}",
       createDeckFailed: "Не вдалося створити колоду: {status} {detail}",
-      invalidAdminToken: "Невірний адмін-токен.",
-      adminTokenCheckFailed: "Не вдалося перевірити адмін-токен: {status}",
       deleteCardFailed: "Не вдалося видалити карту: {status} {detail}",
       deleteDeckFailed: "Не вдалося видалити колоду: {status} {detail}",
       exportDeckFailed: "Не вдалося експортувати: {status} {detail}",
-      deckImported: 'Імпортовано колоду "{name}" (#{id}).',
-      importDeckInvalid: "Додайте коректний JSON для імпорту.",
-      importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
       cardFieldsRequired: "Потрібно вказати назву та опис карти.",
       cardCreated: 'Карту "{name}" (#{id}) створено.',
       deckNameRequired: "Потрібно вказати назву колоди.",
@@ -437,10 +483,26 @@ const TRANSLATIONS = {
       deletedCard: "Карту #{id} видалено.",
       deletedDeck: "Колоду #{id} видалено.",
       exportedDeck: "Експорт колоди #{id}:\n{payload}",
+      deckImported: 'Імпортовано колоду "{name}" (#{id}).',
+      importDeckInvalid: "Додайте коректний JSON для імпорту.",
+      importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
       ready:
-        "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте колодами з адмін-токеном.",
+        "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
       loginFailed: "Помилка входу: {status}",
       registrationSuccess: "Зареєстровано як {name}.",
+      adminRoleRequired:
+        "Потрібен адмін-доступ. Увійдіть як адміністратор або додайте ADMIN_TOKEN.",
+      unableLoadUsers: "Не вдалося завантажити користувачів: {status}",
+      unableLoadAdminRooms: "Не вдалося завантажити кімнати для адміністратора: {status}",
+      roleUpdated: "Оновлено роль {name} на {role}.",
+      deleteUserConfirm: "Видалити користувача {name}? Це також прибере його кімнати.",
+      deletedUser: "Користувача {name} видалено.",
+      deleteUserFailed: "Не вдалося видалити користувача: {status} {detail}",
+      updateRoleFailed: "Не вдалося оновити роль: {status} {detail}",
+      deleteRoomConfirm: "Видалити кімнату {code}?",
+      deletedRoom: "Кімнату {code} видалено.",
+      deleteRoomFailed: "Не вдалося видалити кімнату: {status} {detail}",
+      adminDataLoaded: "Адмін-дані оновлено.",
     },
   },
 };
@@ -456,17 +518,21 @@ const roomForm = document.getElementById("roomForm");
 const roomsList = document.getElementById("roomsList");
 const refreshRoomsButton = document.getElementById("refreshRooms");
 const userInfo = document.getElementById("userInfo");
-const adminTokenInput = document.getElementById("adminToken");
 const refreshAdminDataButton = document.getElementById("refreshAdminData");
 const refreshCardsButton = document.getElementById("refreshCards");
 const refreshDecksButton = document.getElementById("refreshDecks");
-const adminTokenStatusLabel = document.getElementById("adminTokenStatus");
+const refreshUsersButton = document.getElementById("refreshUsers");
+const refreshAdminRoomsButton = document.getElementById("refreshAdminRooms");
+const adminStatusLabel = document.getElementById("adminTokenStatus");
+const adminTokenInput = document.getElementById("adminToken");
 const cardForm = document.getElementById("cardForm");
 const deckForm = document.getElementById("deckForm");
 const deckImportPayload = document.getElementById("deckImportPayload");
 const importDeckButton = document.getElementById("importDeck");
 const cardsList = document.getElementById("cardsList");
 const decksList = document.getElementById("decksList");
+const usersList = document.getElementById("usersList");
+const adminRoomsList = document.getElementById("adminRoomsList");
 const adminOnlySections = document.querySelectorAll("[data-admin-only]");
 const gameSection = document.getElementById("gameSection");
 const deckCount = document.getElementById("deckCount");
@@ -477,6 +543,8 @@ const drawCardButton = document.getElementById("drawCard");
 const resetGameplayButton = document.getElementById("resetGameplay");
 const languageSelector = document.getElementById("languageSelector");
 const loginPasswordInput = document.getElementById("loginPassword");
+const roleChipValue = document.querySelector("#sessionRoleChip .chip-value");
+const roleChipLabel = document.querySelector("#sessionRoleChip .chip-label");
 
 let authToken = null;
 let currentUser = null;
@@ -484,8 +552,7 @@ let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
 let deckCards = [];
 let handCards = [];
 let workspaceCards = [];
-let adminTokenStatus = { value: "", isValid: false, isChecking: false };
-let adminValidationTimer = null;
+let adminStatus = { isActive: false, isChecking: false };
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -595,18 +662,37 @@ function persistApiBase() {
   });
 }
 
-function requireAdminToken() {
-  if (!adminTokenInput) {
-    throw new Error(t("messages.adminTokenRequired"));
+function getAdminToken() {
+  return adminTokenInput?.value.trim() || "";
+}
+
+function persistAdminToken() {
+  if (!adminTokenInput) return;
+  const savedToken = localStorage.getItem(STORAGE_KEYS.adminToken);
+  if (savedToken) {
+    adminTokenInput.value = savedToken;
   }
-  const token = adminTokenInput.value.trim();
-  if (!token) {
-    throw new Error(t("messages.adminTokenRequired"));
+  adminTokenInput.addEventListener("input", () => {
+    const value = adminTokenInput.value.trim();
+    if (value) {
+      localStorage.setItem(STORAGE_KEYS.adminToken, value);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.adminToken);
+    }
+    syncAdminUi();
+  });
+}
+
+function isAdmin() {
+  return currentUser?.role === "admin";
+}
+
+function requireAdminAccess(showMessage = true) {
+  const allowed = Boolean((authToken && isAdmin()) || getAdminToken());
+  if (!allowed && showMessage) {
+    log(t("messages.adminRoleRequired"), true);
   }
-  if (!adminTokenStatus.isValid || adminTokenStatus.value !== token) {
-    throw new Error(t("messages.invalidAdminToken"));
-  }
-  return token;
+  return allowed;
 }
 
 function setAuthSession(token, user) {
@@ -661,92 +747,64 @@ function requireRoomMembership(showMessage = true) {
 }
 
 function adminHeaders() {
-  return {
+  if (!requireAdminAccess(false)) {
+    throw new Error(t("messages.adminRoleRequired"));
+  }
+  const headers = {
     "Content-Type": "application/json",
-    "X-Admin-Token": requireAdminToken(),
   };
-}
-
-function scheduleAdminTokenValidation() {
-  if (!adminTokenInput) return;
-  clearTimeout(adminValidationTimer);
-  const token = adminTokenInput.value.trim();
-  adminTokenStatus = { value: token, isValid: false, isChecking: Boolean(token) };
-  syncAdminUi();
-  if (!token) {
-    return;
+  const adminToken = getAdminToken();
+  if (adminToken) {
+    headers["X-Admin-Token"] = adminToken;
   }
-  adminValidationTimer = setTimeout(validateAdminToken, 300);
-}
-
-async function validateAdminToken() {
-  const token = adminTokenStatus.value;
-  if (!token) {
-    syncAdminUi();
-    return;
+  if (authToken && isAdmin()) {
+    headers.Authorization = `Bearer ${authToken}`;
   }
-  adminTokenStatus.isChecking = true;
-  syncAdminUi();
-  try {
-    const response = await fetch(apiUrl("/admin/verify"), {
-      headers: { "X-Admin-Token": token },
-    });
-    if (adminTokenStatus.value !== token) {
-      return;
-    }
-    if (!response.ok) {
-      adminTokenStatus.isValid = false;
-      log(t("messages.adminTokenCheckFailed", { status: response.status }), true);
-    } else {
-      adminTokenStatus.isValid = true;
-    }
-  } catch (error) {
-    adminTokenStatus.isValid = false;
-    log(error.message, true);
-  } finally {
-    adminTokenStatus.isChecking = false;
-    syncAdminUi();
-  }
+  return headers;
 }
 
 function syncAdminUi() {
-  if (!adminTokenInput) return;
-  const adminMode = adminTokenStatus.isValid;
-  const adminBusy = adminTokenStatus.isChecking;
+  const adminMode = isAdmin() || Boolean(getAdminToken());
+  const adminBusy = adminStatus.isChecking;
   adminOnlySections.forEach((section) => {
     section.hidden = !adminMode;
   });
-  [refreshAdminDataButton, refreshCardsButton, refreshDecksButton].forEach((button) => {
+  [refreshAdminDataButton, refreshCardsButton, refreshDecksButton, refreshUsersButton, refreshAdminRoomsButton].forEach((button) => {
     if (button) {
       button.disabled = !adminMode || adminBusy;
     }
   });
-  if (adminTokenStatusLabel) {
+  if (adminStatusLabel) {
     let statusKey = "admin.status.idle";
-    if (adminTokenStatus.isChecking) {
+    if (adminBusy) {
       statusKey = "admin.status.checking";
     } else if (adminMode) {
       statusKey = "admin.status.valid";
-    } else if (adminTokenStatus.value) {
+    } else {
       statusKey = "admin.status.invalid";
     }
-    adminTokenStatusLabel.textContent = t(statusKey);
-    adminTokenStatusLabel.hidden = !adminTokenStatus.value;
-    adminTokenStatusLabel.classList.toggle("success", adminMode);
-    adminTokenStatusLabel.classList.toggle("warning", adminBusy);
+    adminStatusLabel.textContent = t(statusKey);
+    adminStatusLabel.hidden = false;
+    adminStatusLabel.classList.toggle("success", adminMode && !adminBusy);
+    adminStatusLabel.classList.toggle("warning", adminBusy);
   }
 }
 
 function setUserInfo() {
+  if (roleChipValue) {
+    roleChipValue.textContent = currentUser?.role || t("session.roleGuest");
+  }
   if (!userInfo) return;
   if (!currentUser) {
     userInfo.textContent = t("login.notSignedIn");
+    syncAdminUi();
     return;
   }
   const roomNote = currentRoomCode
     ? ` | ${t("rooms.meta.code")}: <strong>${currentRoomCode}</strong>`
     : "";
   userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})${roomNote}`;
+  syncAdminUi();
 }
 
 function handleAuthFailure() {
@@ -1318,12 +1376,16 @@ function renderDecks(decks) {
 }
 
 async function loadCards() {
-  if (!cardsList || !adminTokenInput) return;
+  if (!cardsList) return;
+  if (!requireAdminAccess()) return;
   try {
     const response = await fetch(apiUrl("/admin/cards"), {
-      headers: { "X-Admin-Token": requireAdminToken() },
+      headers: { Authorization: `Bearer ${authToken}` },
     });
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
       throw new Error(t("messages.unableLoadCards", { status: response.status }));
     }
     const cards = await response.json();
@@ -1335,17 +1397,218 @@ async function loadCards() {
 }
 
 async function loadDecks() {
-  if (!decksList || !adminTokenInput) return;
+  if (!decksList) return;
+  if (!requireAdminAccess()) return;
   try {
     const response = await fetch(apiUrl("/admin/decks"), {
-      headers: { "X-Admin-Token": requireAdminToken() },
+      headers: { Authorization: `Bearer ${authToken}` },
     });
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
       throw new Error(t("messages.unableLoadDecks", { status: response.status }));
     }
     const decks = await response.json();
     renderDecks(decks);
     log(t("messages.decksLoaded", { count: decks.length }));
+  } catch (error) {
+    log(error.message, true);
+  }
+}
+
+function renderUsers(users) {
+  if (!usersList) return;
+  usersList.innerHTML = "";
+  if (!users.length) {
+    usersList.innerHTML = `<li class="muted">${t("users.listEmpty")}</li>`;
+    return;
+  }
+
+  users.forEach((user) => {
+    const item = document.createElement("li");
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = `${user.display_name} (${user.provider})`;
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = `ID: ${user.id}`;
+
+    const actions = document.createElement("div");
+    actions.className = "item-actions";
+
+    const roleLabel = document.createElement("label");
+    roleLabel.className = "field";
+    roleLabel.textContent = `${t("users.role")}: `;
+    const roleSelect = document.createElement("select");
+    ["user", "admin"].forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      roleSelect.appendChild(option);
+    });
+    roleSelect.value = user.role;
+    roleSelect.addEventListener("change", () => updateUserRole(user.id, roleSelect.value));
+    roleLabel.appendChild(roleSelect);
+    actions.appendChild(roleLabel);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "ghost";
+    deleteButton.textContent = t("users.delete");
+    deleteButton.addEventListener("click", () => deleteUserAccount(user));
+    actions.appendChild(deleteButton);
+
+    item.appendChild(title);
+    item.appendChild(meta);
+    item.appendChild(actions);
+    usersList.appendChild(item);
+  });
+}
+
+async function loadUsers() {
+  if (!usersList) return;
+  if (!requireAdminAccess()) return;
+  try {
+    const response = await fetch(apiUrl("/admin/users"), {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
+      throw new Error(t("messages.unableLoadUsers", { status: response.status }));
+    }
+    const users = await response.json();
+    renderUsers(users);
+  } catch (error) {
+    log(error.message, true);
+  }
+}
+
+async function updateUserRole(userId, role) {
+  try {
+    const response = await fetch(apiUrl(`/admin/users/${userId}/role`), {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ role }),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
+      throw new Error(
+        t("messages.updateRoleFailed", { status: response.status, detail: errText })
+      );
+    }
+    const user = await response.json();
+    log(t("messages.roleUpdated", { name: user.display_name, role: user.role }));
+    await loadUsers();
+  } catch (error) {
+    log(error.message, true);
+  }
+}
+
+async function deleteUserAccount(user) {
+  if (!confirm(t("messages.deleteUserConfirm", { name: user.display_name }))) return;
+  try {
+    const response = await fetch(apiUrl(`/admin/users/${user.id}`), {
+      method: "DELETE",
+      headers: adminHeaders(),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
+      throw new Error(
+        t("messages.deleteUserFailed", { status: response.status, detail: errText })
+      );
+    }
+    log(t("messages.deletedUser", { name: user.display_name }));
+    await loadUsers();
+    await loadAdminRooms();
+  } catch (error) {
+    log(error.message, true);
+  }
+}
+
+function renderAdminRooms(rooms) {
+  if (!adminRoomsList) return;
+  adminRoomsList.innerHTML = "";
+  if (!rooms.length) {
+    adminRoomsList.innerHTML = `<li class="muted">${t("rooms.adminEmpty")}</li>`;
+    return;
+  }
+
+  rooms.forEach((room) => {
+    const item = document.createElement("li");
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = `${room.name} (${room.code})`;
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = `${t("rooms.meta.host")}: ${room.host_user_id} | ${t("rooms.meta.players")}: ${room.player_count}/${room.max_players}`;
+
+    const actions = document.createElement("div");
+    actions.className = "item-actions";
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "ghost";
+    deleteButton.textContent = t("rooms.delete");
+    deleteButton.addEventListener("click", () => deleteAdminRoom(room.code));
+    actions.appendChild(deleteButton);
+
+    item.appendChild(title);
+    item.appendChild(meta);
+    item.appendChild(actions);
+    adminRoomsList.appendChild(item);
+  });
+}
+
+async function loadAdminRooms() {
+  if (!adminRoomsList) return;
+  if (!requireAdminAccess()) return;
+  try {
+    const response = await fetch(apiUrl("/admin/rooms"), {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
+      throw new Error(
+        t("messages.unableLoadAdminRooms", { status: response.status })
+      );
+    }
+    const rooms = await response.json();
+    renderAdminRooms(rooms);
+  } catch (error) {
+    log(error.message, true);
+  }
+}
+
+async function deleteAdminRoom(roomCode) {
+  if (!confirm(t("messages.deleteRoomConfirm", { code: roomCode }))) return;
+  try {
+    const response = await fetch(apiUrl(`/admin/rooms/${roomCode}`), {
+      method: "DELETE",
+      headers: adminHeaders(),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
+      throw new Error(
+        t("messages.deleteRoomFailed", { status: response.status, detail: errText })
+      );
+    }
+    log(t("messages.deletedRoom", { code: roomCode }));
+    await loadAdminRooms();
   } catch (error) {
     log(error.message, true);
   }
@@ -1446,10 +1709,13 @@ async function deleteCard(cardId) {
   try {
     const response = await fetch(apiUrl(`/admin/cards/${cardId}`), {
       method: "DELETE",
-      headers: { "X-Admin-Token": requireAdminToken() },
+      headers: { Authorization: `Bearer ${authToken}` },
     });
     if (!response.ok) {
       const errText = await response.text();
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
       throw new Error(
         t("messages.deleteCardFailed", { status: response.status, detail: errText })
       );
@@ -1466,10 +1732,13 @@ async function deleteDeck(deckId) {
   try {
     const response = await fetch(apiUrl(`/admin/decks/${deckId}`), {
       method: "DELETE",
-      headers: { "X-Admin-Token": requireAdminToken() },
+      headers: { Authorization: `Bearer ${authToken}` },
     });
     if (!response.ok) {
       const errText = await response.text();
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
       throw new Error(
         t("messages.deleteDeckFailed", { status: response.status, detail: errText })
       );
@@ -1484,10 +1753,13 @@ async function deleteDeck(deckId) {
 async function exportDeck(deckId) {
   try {
     const response = await fetch(apiUrl(`/admin/decks/${deckId}/export`), {
-      headers: { "X-Admin-Token": requireAdminToken() },
+      headers: { Authorization: `Bearer ${authToken}` },
     });
     if (!response.ok) {
       const errText = await response.text();
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
       throw new Error(
         t("messages.exportDeckFailed", { status: response.status, detail: errText })
       );
@@ -1539,7 +1811,16 @@ async function importDeck() {
 }
 
 async function loadAdminData() {
-  await Promise.all([loadCards(), loadDecks()]);
+  if (!requireAdminAccess()) return;
+  adminStatus.isChecking = true;
+  syncAdminUi();
+  try {
+    await Promise.all([loadCards(), loadDecks(), loadUsers(), loadAdminRooms()]);
+    log(t("messages.adminDataLoaded"));
+  } finally {
+    adminStatus.isChecking = false;
+    syncAdminUi();
+  }
 }
 
 function wireEvents() {
@@ -1548,14 +1829,13 @@ function wireEvents() {
     registerGuestButton.addEventListener("click", handleGuestRegistration);
   if (roomForm) roomForm.addEventListener("submit", createRoom);
   if (refreshRoomsButton) refreshRoomsButton.addEventListener("click", loadRooms);
-  if (adminTokenInput) {
-    adminTokenInput.addEventListener("input", scheduleAdminTokenValidation);
-    adminTokenInput.addEventListener("blur", scheduleAdminTokenValidation);
-  }
   if (refreshAdminDataButton)
     refreshAdminDataButton.addEventListener("click", loadAdminData);
   if (refreshCardsButton) refreshCardsButton.addEventListener("click", loadCards);
   if (refreshDecksButton) refreshDecksButton.addEventListener("click", loadDecks);
+  if (refreshUsersButton) refreshUsersButton.addEventListener("click", loadUsers);
+  if (refreshAdminRoomsButton)
+    refreshAdminRoomsButton.addEventListener("click", loadAdminRooms);
   if (cardForm) cardForm.addEventListener("submit", createCard);
   if (deckForm) deckForm.addEventListener("submit", createDeck);
   if (importDeckButton) importDeckButton.addEventListener("click", importDeck);
@@ -1569,9 +1849,9 @@ function wireEvents() {
 }
 
 persistApiBase();
+persistAdminToken();
 setLanguage(currentLanguage);
 wireEvents();
-scheduleAdminTokenValidation();
 setUserInfo();
 restoreSession();
 log(t("messages.ready"));

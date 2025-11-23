@@ -140,6 +140,11 @@ def _migrate_password_hash_column() -> None:
     if "password_hash" not in columns:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE user ADD COLUMN password_hash VARCHAR"))
+    if "role" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE user ADD COLUMN role VARCHAR NOT NULL DEFAULT 'user'")
+            )
     _add_missing_max_spectators_column()
     _apply_migrations()
 
