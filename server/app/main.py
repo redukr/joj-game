@@ -39,6 +39,7 @@ def _resolve_cors_settings():
     return origins, origin_regex
 
 client_web_dir = Path(__file__).resolve().parents[2] / "client-web"
+admin_web_dir = Path(__file__).resolve().parents[2] / "admin-web"
 
 allowed_origins, allowed_origin_regex = _resolve_cors_settings()
 
@@ -56,6 +57,11 @@ app.mount(
     StaticFiles(directory=client_web_dir, html=True),
     name="client-web",
 )
+app.mount(
+    "/admin-web",
+    StaticFiles(directory=admin_web_dir, html=True),
+    name="admin-web",
+)
 
 app.include_router(auth.router)
 app.include_router(cards.router)
@@ -72,6 +78,7 @@ def root():
         "docs_url": "/docs",
         "openapi_url": "/openapi.json",
         "web_client_url": "/client-web/",
+        "admin_web_url": "/admin-web/",
     }
 
 
@@ -85,6 +92,19 @@ def client_index():
     return JSONResponse(
         status_code=404,
         content={"detail": "Client web bundle not found"},
+    )
+
+
+@app.get("/admin.html")
+def admin_index():
+    """Redirect legacy admin path to the mounted admin web app."""
+
+    index_path = admin_web_dir / "admin.html"
+    if index_path.exists():
+        return RedirectResponse(url="/admin-web/admin.html")
+    return JSONResponse(
+        status_code=404,
+        content={"detail": "Admin web bundle not found"},
     )
 
 
