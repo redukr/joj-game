@@ -174,6 +174,15 @@ const TRANSLATIONS = {
       delete: "Delete",
     },
     status: { heading: "Status" },
+    session: {
+      apiLabel: "API base",
+      userLabel: "User",
+      userGuest: "Guest (not signed in)",
+      roomLabel: "Room",
+      roomNone: "Not joined",
+      adminLabel: "Admin",
+      adminMissing: "Token missing",
+    },
     messages: {
       adminTokenRequired: "Enter the admin token first.",
       sessionExpired: "Session expired. Please log in again.",
@@ -391,6 +400,15 @@ const TRANSLATIONS = {
       delete: "Видалити",
     },
     status: { heading: "Статус" },
+    session: {
+      apiLabel: "API база",
+      userLabel: "Користувач",
+      userGuest: "Гість (не авторизовано)",
+      roomLabel: "Кімната",
+      roomNone: "Не приєднано",
+      adminLabel: "Адмін",
+      adminMissing: "Немає токена",
+    },
     messages: {
       adminTokenRequired: "Спочатку введіть адмін-токен.",
       sessionExpired: "Сесію завершено. Увійдіть ще раз.",
@@ -456,6 +474,10 @@ const roomForm = document.getElementById("roomForm");
 const roomsList = document.getElementById("roomsList");
 const refreshRoomsButton = document.getElementById("refreshRooms");
 const userInfo = document.getElementById("userInfo");
+const sessionApiChip = document.getElementById("sessionApiChip");
+const sessionUserChip = document.getElementById("sessionUserChip");
+const sessionRoomChip = document.getElementById("sessionRoomChip");
+const sessionAdminChip = document.getElementById("sessionAdminChip");
 const adminTokenInput = document.getElementById("adminToken");
 const refreshAdminDataButton = document.getElementById("refreshAdminData");
 const refreshCardsButton = document.getElementById("refreshCards");
@@ -542,6 +564,105 @@ function applyTranslations() {
     const value = t(node.dataset.i18nPlaceholder);
     node.placeholder = value;
   });
+  syncSessionBar();
+}
+
+function setChipText(chip, { label, value, tone = null, hidden = false }) {
+  if (!chip) return;
+  const labelNode = chip.querySelector(".chip-label");
+  const valueNode = chip.querySelector(".chip-value");
+  if (labelNode) labelNode.textContent = label;
+  if (valueNode) valueNode.textContent = value;
+  chip.hidden = hidden;
+  ["success", "warning"].forEach((cls) => chip.classList.remove(cls));
+  if (tone) {
+    chip.classList.add(tone);
+  }
+}
+
+function syncSessionBar() {
+  if (sessionApiChip && apiBaseInput) {
+    const apiValue = apiBaseInput.value.trim() || t("session.userGuest");
+    setChipText(sessionApiChip, {
+      label: t("session.apiLabel"),
+      value: apiValue,
+      tone: apiValue ? null : "warning",
+    });
+  }
+
+  if (sessionUserChip) {
+    const isLoggedIn = Boolean(currentUser && authToken);
+    setChipText(sessionUserChip, {
+      label: t("session.userLabel"),
+      value: isLoggedIn
+        ? `${currentUser.display_name} (#${currentUser.id})`
+        : t("session.userGuest"),
+      tone: isLoggedIn ? "success" : "warning",
+    });
+  }
+
+  if (sessionRoomChip) {
+    setChipText(sessionRoomChip, {
+      label: t("session.roomLabel"),
+      value: currentRoomCode || t("session.roomNone"),
+      hidden: !currentUser && !currentRoomCode,
+      tone: currentRoomCode ? "success" : "warning",
+    });
+  }
+
+  if (sessionAdminChip && adminTokenInput) {
+    const tone = adminTokenStatus.isValid
+      ? "success"
+      : adminTokenStatus.value
+      ? "warning"
+      : null;
+    const label = t("session.adminLabel");
+    let value = t("session.adminMissing");
+    if (adminTokenStatus.isChecking) {
+      value = t("admin.status.checking");
+    } else if (adminTokenStatus.isValid) {
+      value = t("admin.status.valid");
+    } else if (adminTokenStatus.value) {
+      value = t("admin.status.invalid");
+    }
+    setChipText(sessionAdminChip, {
+      label,
+      value,
+      hidden: !adminTokenInput,
+      tone,
+    });
+  }
+}
+
+function withBusyState(button, task) {
+  const targetButton = button || null;
+  const originalText = targetButton?.textContent;
+  if (targetButton) {
+    targetButton.disabled = true;
+    targetButton.dataset.originalText = originalText || "";
+    targetButton.classList.add("is-busy");
+    targetButton.setAttribute("aria-busy", "true");
+    if (originalText && !originalText.endsWith("…")) {
+      targetButton.textContent = `${originalText}…`;
+    }
+  }
+
+  const finalize = () => {
+    if (!targetButton) return;
+    targetButton.disabled = false;
+    targetButton.classList.remove("is-busy");
+    targetButton.removeAttribute("aria-busy");
+    if (targetButton.dataset.originalText) {
+      targetButton.textContent = targetButton.dataset.originalText;
+    }
+  };
+
+  const result = task();
+  if (result && typeof result.finally === "function") {
+    return result.finally(finalize);
+  }
+  finalize();
+  return result;
 }
 
 function setLanguage(language) {
@@ -592,7 +713,9 @@ function persistApiBase() {
   }
   apiBaseInput.addEventListener("input", () => {
     localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
+    syncSessionBar();
   });
+  syncSessionBar();
 }
 
 function requireAdminToken() {
@@ -621,6 +744,7 @@ function setAuthSession(token, user) {
     setCurrentRoom(null);
     resetGameplayState();
   }
+  syncSessionBar();
 }
 
 function setCurrentRoom(roomCode) {
@@ -636,6 +760,7 @@ function setCurrentRoom(roomCode) {
     resetGameplayState();
   }
   setUserInfo();
+  syncSessionBar();
 }
 
 function syncRoomSelection(rooms) {
@@ -735,18 +860,21 @@ function syncAdminUi() {
     adminTokenStatusLabel.classList.toggle("success", adminMode);
     adminTokenStatusLabel.classList.toggle("warning", adminBusy);
   }
+  syncSessionBar();
 }
 
 function setUserInfo() {
   if (!userInfo) return;
   if (!currentUser) {
     userInfo.textContent = t("login.notSignedIn");
+    syncSessionBar();
     return;
   }
   const roomNote = currentRoomCode
     ? ` | ${t("rooms.meta.code")}: <strong>${currentRoomCode}</strong>`
     : "";
   userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})${roomNote}`;
+  syncSessionBar();
 }
 
 function handleAuthFailure() {
@@ -1003,79 +1131,84 @@ function getGuestCredentials() {
   return { displayName, password };
 }
 
-async function authenticateGuest(successMessageKey) {
+async function authenticateGuest(successMessageKey, button) {
   const credentials = getGuestCredentials();
   if (!credentials) return;
 
-  try {
-    if (apiBaseInput) {
-      localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
-    }
+  await withBusyState(button, async () => {
+    try {
+      if (apiBaseInput) {
+        localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
+      }
 
-    const response = await fetch(apiUrl("/auth/login"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: "guest",
-        display_name: credentials.displayName,
-        password: credentials.password,
-      }),
-    });
+      const response = await fetch(apiUrl("/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "guest",
+          display_name: credentials.displayName,
+          password: credentials.password,
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(t("messages.loginFailed", { status: response.status }));
-    }
+      if (!response.ok) {
+        throw new Error(t("messages.loginFailed", { status: response.status }));
+      }
 
-    const data = await response.json();
-    setAuthSession(data.access_token, data.user);
-    log(t(successMessageKey, { name: currentUser.display_name }));
-    setUserInfo();
-    const redirectTarget = document.body.dataset.redirectAfterAuth;
-    if (redirectTarget) {
-      window.location.href = redirectTarget;
-      return;
+      const data = await response.json();
+      setAuthSession(data.access_token, data.user);
+      log(t(successMessageKey, { name: currentUser.display_name }));
+      setUserInfo();
+      const redirectTarget = document.body.dataset.redirectAfterAuth;
+      if (redirectTarget) {
+        window.location.href = redirectTarget;
+        return;
+      }
+      await loadRooms();
+      await prepareGameplayArea();
+    } catch (error) {
+      log(error.message, true);
     }
-    await loadRooms();
-    await prepareGameplayArea();
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
 async function handleGuestLogin(event) {
   event.preventDefault();
-  await authenticateGuest("messages.loginSuccess");
+  await authenticateGuest("messages.loginSuccess", event.submitter);
 }
 
 async function handleGuestRegistration(event) {
   event.preventDefault();
-  await authenticateGuest("messages.registrationSuccess");
+  await authenticateGuest("messages.registrationSuccess", event.submitter);
 }
 
-async function loadRooms() {
+async function loadRooms(event) {
   if (!roomsList) return;
-  try {
-    const headers = {};
-    if (authToken) {
-      headers.Authorization = `Bearer ${authToken}`;
-    }
-    const response = await fetch(apiUrl("/rooms"), { headers });
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleAuthFailure();
+  const button = event?.currentTarget || refreshRoomsButton;
+  await withBusyState(button, async () => {
+    try {
+      const headers = {};
+      if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
       }
-      throw new Error(t("messages.unableToLoadRooms", { status: response.status }));
+      const response = await fetch(apiUrl("/rooms"), { headers });
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleAuthFailure();
+        }
+        throw new Error(t("messages.unableToLoadRooms", { status: response.status }));
+      }
+      const rooms = await response.json();
+      if (authToken) {
+        syncRoomSelection(rooms);
+      }
+      setUserInfo();
+      renderRooms(rooms);
+      log(t("messages.roomsLoaded", { count: rooms.length }));
+    } catch (error) {
+      log(error.message, true);
     }
-    const rooms = await response.json();
-    if (authToken) {
-      syncRoomSelection(rooms);
-    }
-    setUserInfo();
-    renderRooms(rooms);
-    log(t("messages.roomsLoaded", { count: rooms.length }));
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
 function renderRooms(rooms) {
@@ -1155,62 +1288,65 @@ function renderRooms(rooms) {
 
 async function createRoom(event) {
   event.preventDefault();
+  const button = event.submitter;
   const roomName = document.getElementById("roomName").value.trim();
   const maxPlayers = parseInt(document.getElementById("maxPlayers").value, 10);
   const maxSpectators = parseInt(
     document.getElementById("maxSpectators").value,
     10
   );
-  if (!authToken) {
-    log(t("messages.loginRequiredRoom"), true);
-    return;
-  }
-  if (!roomName) {
-    log(t("messages.roomNameRequired"), true);
-    return;
-  }
-  if (Number.isNaN(maxPlayers)) {
-    log(t("messages.maxPlayersRequired"), true);
-    return;
-  }
-  if (Number.isNaN(maxSpectators)) {
-    log(t("messages.spectatorsRequired"), true);
-    return;
-  }
-
-  try {
-    const response = await fetch(apiUrl("/rooms"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({
-        name: roomName,
-        max_players: maxPlayers,
-        max_spectators: maxSpectators,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      if (response.status === 401) {
-        handleAuthFailure();
-      }
-      throw new Error(
-        t("messages.createRoomFailed", { status: response.status, detail: errText })
-      );
+  await withBusyState(button, async () => {
+    if (!authToken) {
+      log(t("messages.loginRequiredRoom"), true);
+      return;
+    }
+    if (!roomName) {
+      log(t("messages.roomNameRequired"), true);
+      return;
+    }
+    if (Number.isNaN(maxPlayers)) {
+      log(t("messages.maxPlayersRequired"), true);
+      return;
+    }
+    if (Number.isNaN(maxSpectators)) {
+      log(t("messages.spectatorsRequired"), true);
+      return;
     }
 
-    const room = await response.json();
-    setCurrentRoom(room.code);
-    log(t("messages.roomCreated", { name: room.name, code: room.code }));
-    document.getElementById("roomName").value = "";
-    await loadRooms();
-    await prepareGameplayArea();
-  } catch (error) {
-    log(error.message, true);
-  }
+    try {
+      const response = await fetch(apiUrl("/rooms"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          name: roomName,
+          max_players: maxPlayers,
+          max_spectators: maxSpectators,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        if (response.status === 401) {
+          handleAuthFailure();
+        }
+        throw new Error(
+          t("messages.createRoomFailed", { status: response.status, detail: errText })
+        );
+      }
+
+      const room = await response.json();
+      setCurrentRoom(room.code);
+      log(t("messages.roomCreated", { name: room.name, code: room.code }));
+      document.getElementById("roomName").value = "";
+      await loadRooms();
+      await prepareGameplayArea();
+    } catch (error) {
+      log(error.message, true);
+    }
+  });
 }
 
 function formatCardEffects(card) {
@@ -1317,42 +1453,49 @@ function renderDecks(decks) {
   });
 }
 
-async function loadCards() {
+async function loadCards(event) {
   if (!cardsList || !adminTokenInput) return;
-  try {
-    const response = await fetch(apiUrl("/admin/cards"), {
-      headers: { "X-Admin-Token": requireAdminToken() },
-    });
-    if (!response.ok) {
-      throw new Error(t("messages.unableLoadCards", { status: response.status }));
+  const button = event?.currentTarget || refreshCardsButton;
+  await withBusyState(button, async () => {
+    try {
+      const response = await fetch(apiUrl("/admin/cards"), {
+        headers: { "X-Admin-Token": requireAdminToken() },
+      });
+      if (!response.ok) {
+        throw new Error(t("messages.unableLoadCards", { status: response.status }));
+      }
+      const cards = await response.json();
+      renderCards(cards);
+      log(t("messages.cardsLoaded", { count: cards.length }));
+    } catch (error) {
+      log(error.message, true);
     }
-    const cards = await response.json();
-    renderCards(cards);
-    log(t("messages.cardsLoaded", { count: cards.length }));
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
-async function loadDecks() {
+async function loadDecks(event) {
   if (!decksList || !adminTokenInput) return;
-  try {
-    const response = await fetch(apiUrl("/admin/decks"), {
-      headers: { "X-Admin-Token": requireAdminToken() },
-    });
-    if (!response.ok) {
-      throw new Error(t("messages.unableLoadDecks", { status: response.status }));
+  const button = event?.currentTarget || refreshDecksButton;
+  await withBusyState(button, async () => {
+    try {
+      const response = await fetch(apiUrl("/admin/decks"), {
+        headers: { "X-Admin-Token": requireAdminToken() },
+      });
+      if (!response.ok) {
+        throw new Error(t("messages.unableLoadDecks", { status: response.status }));
+      }
+      const decks = await response.json();
+      renderDecks(decks);
+      log(t("messages.decksLoaded", { count: decks.length }));
+    } catch (error) {
+      log(error.message, true);
     }
-    const decks = await response.json();
-    renderDecks(decks);
-    log(t("messages.decksLoaded", { count: decks.length }));
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
 async function createCard(event) {
   event.preventDefault();
+  const button = event.submitter;
   const name = document.getElementById("cardName").value.trim();
   const description = document.getElementById("cardDescription").value.trim();
   const category = document.getElementById("cardCategory").value.trim();
@@ -1364,37 +1507,39 @@ async function createCard(event) {
     const value = Number.parseInt(input?.value, 10);
     resourcePayload[key] = Number.isNaN(value) ? 0 : value;
   });
-  if (!name || !description) {
-    log(t("messages.cardFieldsRequired"), true);
-    return;
-  }
-
-  try {
-    const response = await fetch(apiUrl("/admin/cards"), {
-      method: "POST",
-      headers: adminHeaders(),
-      body: JSON.stringify({
-        name,
-        description,
-        category: category || null,
-        ...resourcePayload,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.createCardFailed", { status: response.status, detail: errText })
-      );
+  await withBusyState(button, async () => {
+    if (!name || !description) {
+      log(t("messages.cardFieldsRequired"), true);
+      return;
     }
 
-    const card = await response.json();
-    log(t("messages.cardCreated", { name: card.name, id: card.id }));
-    cardForm.reset();
-    await loadCards();
-  } catch (error) {
-    log(error.message, true);
-  }
+    try {
+      const response = await fetch(apiUrl("/admin/cards"), {
+        method: "POST",
+        headers: adminHeaders(),
+        body: JSON.stringify({
+          name,
+          description,
+          category: category || null,
+          ...resourcePayload,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(
+          t("messages.createCardFailed", { status: response.status, detail: errText })
+        );
+      }
+
+      const card = await response.json();
+      log(t("messages.cardCreated", { name: card.name, id: card.id }));
+      cardForm.reset();
+      await loadCards();
+    } catch (error) {
+      log(error.message, true);
+    }
+  });
 }
 
 function parseCardIds(input) {
@@ -1409,36 +1554,39 @@ function parseCardIds(input) {
 
 async function createDeck(event) {
   event.preventDefault();
+  const button = event.submitter;
   const name = document.getElementById("deckName").value.trim();
   const description = document.getElementById("deckDescription").value.trim();
   const cardIdsInput = document.getElementById("deckCardIds").value;
   const card_ids = parseCardIds(cardIdsInput);
-  if (!name) {
-    log(t("messages.deckNameRequired"), true);
-    return;
-  }
-
-  try {
-    const response = await fetch(apiUrl("/admin/decks"), {
-      method: "POST",
-      headers: adminHeaders(),
-      body: JSON.stringify({ name, description: description || null, card_ids }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.createDeckFailed", { status: response.status, detail: errText })
-      );
+  await withBusyState(button, async () => {
+    if (!name) {
+      log(t("messages.deckNameRequired"), true);
+      return;
     }
 
-    const deck = await response.json();
-    log(t("messages.deckCreated", { name: deck.name, id: deck.id }));
-    deckForm.reset();
-    await loadDecks();
-  } catch (error) {
-    log(error.message, true);
-  }
+    try {
+      const response = await fetch(apiUrl("/admin/decks"), {
+        method: "POST",
+        headers: adminHeaders(),
+        body: JSON.stringify({ name, description: description || null, card_ids }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(
+          t("messages.createDeckFailed", { status: response.status, detail: errText })
+        );
+      }
+
+      const deck = await response.json();
+      log(t("messages.deckCreated", { name: deck.name, id: deck.id }));
+      deckForm.reset();
+      await loadDecks();
+    } catch (error) {
+      log(error.message, true);
+    }
+  });
 }
 
 async function deleteCard(cardId) {
@@ -1500,7 +1648,8 @@ async function exportDeck(deckId) {
   }
 }
 
-async function importDeck() {
+async function importDeck(event) {
+  const button = event?.currentTarget || importDeckButton;
   if (!deckImportPayload) return;
   const raw = deckImportPayload.value.trim();
   if (!raw) {
@@ -1516,30 +1665,33 @@ async function importDeck() {
     return;
   }
 
-  try {
-    const response = await fetch(apiUrl("/admin/decks/import"), {
-      method: "POST",
-      headers: adminHeaders(),
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.importDeckFailed", { status: response.status, detail: errText })
-      );
-    }
+  await withBusyState(button, async () => {
+    try {
+      const response = await fetch(apiUrl("/admin/decks/import"), {
+        method: "POST",
+        headers: adminHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(
+          t("messages.importDeckFailed", { status: response.status, detail: errText })
+        );
+      }
 
-    const deck = await response.json();
-    log(t("messages.deckImported", { name: deck.name, id: deck.id }));
-    deckImportPayload.value = "";
-    await loadDecks();
-  } catch (error) {
-    log(error.message, true);
-  }
+      const deck = await response.json();
+      log(t("messages.deckImported", { name: deck.name, id: deck.id }));
+      deckImportPayload.value = "";
+      await loadDecks();
+    } catch (error) {
+      log(error.message, true);
+    }
+  });
 }
 
-async function loadAdminData() {
-  await Promise.all([loadCards(), loadDecks()]);
+async function loadAdminData(event) {
+  const button = event?.currentTarget || refreshAdminDataButton;
+  await withBusyState(button, () => Promise.all([loadCards(), loadDecks()]));
 }
 
 function wireEvents() {

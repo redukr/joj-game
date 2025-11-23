@@ -32,6 +32,24 @@
         <a href="../admin-web/management.html">Management</a>
         <a href="../admin-web/admin.html">Admin</a>
       </nav>
+      <div class="session-bar" role="status" aria-live="polite">
+        <div class="session-chip" id="sessionApiChip">
+          <span class="chip-label" data-i18n="session.apiLabel">API base</span>
+          <span class="chip-value"></span>
+        </div>
+        <div class="session-chip" id="sessionUserChip">
+          <span class="chip-label" data-i18n="session.userLabel">User</span>
+          <span class="chip-value" data-i18n="session.userGuest">Guest (not signed in)</span>
+        </div>
+        <div class="session-chip" id="sessionRoomChip">
+          <span class="chip-label" data-i18n="session.roomLabel">Room</span>
+          <span class="chip-value" data-i18n="session.roomNone">Not joined</span>
+        </div>
+        <div class="session-chip" id="sessionAdminChip">
+          <span class="chip-label" data-i18n="session.adminLabel">Admin</span>
+          <span class="chip-value" data-i18n="session.adminMissing">Token missing</span>
+        </div>
+      </div>
     </header>
 
     <section class="card">
