@@ -128,13 +128,17 @@ class Repository:
             new_card_ids.append(card.id)
 
         deck_payload = payload.deck
-        combined_card_ids = list(deck_payload.card_ids or []) + new_card_ids
-        self._validate_cards_exist(combined_card_ids)
+
+        if new_card_ids:
+            card_ids = new_card_ids
+        else:
+            card_ids = list(deck_payload.card_ids or [])
+            self._validate_cards_exist(card_ids)
 
         deck = Deck(
             name=deck_payload.name,
             description=deck_payload.description,
-            card_ids=combined_card_ids,
+            card_ids=card_ids,
         )
         self.session.add(deck)
         self.session.flush()
