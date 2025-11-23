@@ -88,9 +88,15 @@ def _apply_migrations() -> None:
     if "expires_at" not in token_columns:
         with engine.begin() as connection:
             connection.execute(
+                text("ALTER TABLE token ADD COLUMN expires_at DATETIME")
+            )
+        # Populate existing rows with a 12-hour expiry to match the application default
+        with engine.begin() as connection:
+            connection.execute(
                 text(
-                    "ALTER TABLE token "
-                    "ADD COLUMN expires_at DATETIME NOT NULL DEFAULT (datetime('now', '+12 hours'))"
+                    "UPDATE token "
+                    "SET expires_at = datetime('now', '+12 hours') "
+                    "WHERE expires_at IS NULL"
                 )
             )
     if "revoked_at" not in token_columns:
