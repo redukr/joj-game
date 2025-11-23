@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import List, Optional
 
-from sqlalchemy import Column, UniqueConstraint
+from sqlalchemy import Column, String, UniqueConstraint
 from sqlalchemy.dialects.sqlite import JSON
 from sqlmodel import Field, SQLModel
 
@@ -79,7 +79,10 @@ class User(SQLModel, table=True):
     provider: Provider
     display_name: str
     password_hash: str | None = Field(default=None, description="Hashed password for local auth")
-    role: Role = Field(default=Role.USER)
+    role: Role = Field(
+        default=Role.USER,
+        sa_column=Column(String, nullable=False),
+    )
 
 
 class UserRead(SQLModel):
