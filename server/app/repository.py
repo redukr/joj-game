@@ -96,9 +96,13 @@ class Repository:
     def _validate_cards_exist(self, card_ids: List[int]) -> None:
         if not card_ids:
             return
-        found_ids = set(
-            self.session.exec(select(Card.id).where(Card.id.in_(card_ids))).all()
-        )
+        raw_results = self.session.exec(
+            select(Card.id).where(Card.id.in_(card_ids))
+        ).all()
+        found_ids = {
+            row[0] if isinstance(row, tuple) else row
+            for row in raw_results
+        }
         missing = [cid for cid in card_ids if cid not in found_ids]
         if missing:
             raise HTTPException(status_code=400, detail=f"Cards do not exist: {missing}")
