@@ -66,6 +66,7 @@ def _ensure_card_resource_columns() -> None:
 def _apply_migrations() -> None:
     inspector = inspect(engine)
     room_columns = {column_info["name"] for column_info in inspector.get_columns("room")}
+    token_columns = {column_info["name"] for column_info in inspector.get_columns("token")}
 
     if "max_spectators" not in room_columns:
         with engine.begin() as connection:
@@ -82,6 +83,14 @@ def _apply_migrations() -> None:
                 text(
                     "ALTER TABLE room "
                     "ADD COLUMN status VARCHAR NOT NULL DEFAULT 'active'"
+                )
+            )
+    if "expires_at" not in token_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE token "
+                    "ADD COLUMN expires_at DATETIME NOT NULL DEFAULT (datetime('now', '+12 hours'))"
                 )
             )
     _ensure_card_resource_columns()

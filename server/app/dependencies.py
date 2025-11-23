@@ -1,4 +1,5 @@
 from fastapi import Depends, Header, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import get_settings
 from app.db import get_session
@@ -20,26 +21,29 @@ def require_admin(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin token")
 
 
-def get_current_user(authorization: str = Header(..., alias="Authorization"), repo: Repository = Depends(get_repository)):
-    try:
-        scheme, token = authorization.split()
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Authorization header")
-    if scheme.lower() != "bearer":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Use Bearer token")
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def _extract_token(credentials: HTTPAuthorizationCredentials | None) -> str:
+    if not credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header missing")
+    if credentials.scheme.lower() != "bearer":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Authorization scheme must be Bearer")
+    if not credentials.credentials:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bearer token is empty")
+    return credentials.credentials
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme), repo: Repository = Depends(get_repository)):
+    token = _extract_token(credentials)
     return repo.resolve_user(token)
 
 
 def get_optional_user(
-    authorization: str | None = Header(None, alias="Authorization"),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     repo: Repository = Depends(get_repository),
 ):
-    if not authorization:
+    if not credentials:
         return None
-    try:
-        scheme, token = authorization.split()
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Authorization header")
-    if scheme.lower() != "bearer":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Use Bearer token")
+    token = _extract_token(credentials)
     return repo.resolve_user(token)

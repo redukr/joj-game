@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import List, Optional
 
@@ -79,6 +79,7 @@ class Token(SQLModel, table=True):
     token: str = Field(primary_key=True)
     user_id: str = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=12))
 
 
 class AuthResponse(SQLModel):
