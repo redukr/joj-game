@@ -2,9 +2,11 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DatabaseError, OperationalError
 from sqlalchemy import inspect, text
 from sqlmodel import Session, SQLModel, create_engine
+
+from app import models  # noqa: F401  Ensure models are registered with SQLModel metadata
 
 from app.config import get_settings
 
@@ -111,8 +113,25 @@ def _apply_migrations() -> None:
 
 
 def init_db() -> None:
-    SQLModel.metadata.create_all(engine)
+    try:
+        SQLModel.metadata.create_all(engine)
+    except DatabaseError as error:
+        if not _recreate_malformed_deck(error):
+            raise
     _migrate_password_hash_column()
+
+
+def _recreate_malformed_deck(error: DatabaseError) -> bool:
+    message = str(getattr(error, "orig", error)).lower()
+    if "malformed database schema (deck)" not in message:
+        return False
+
+    db_path = Path(get_settings().database_url)
+    if db_path.exists():
+        db_path.unlink()
+
+    SQLModel.metadata.create_all(engine)
+    return True
 
 
 def _migrate_password_hash_column() -> None:

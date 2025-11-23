@@ -49,6 +49,10 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
 - `GET /rooms` — list all rooms.
 
 ## Notes
-- Data now persists to SQLite (`./data/app.db`) via SQLModel; adjust `DATABASE_URL` to point to a different location.
+- Data now persists to SQLite (`./data/app.db`) via SQLModel; adjust `DATABASE_URL` to point to a different location. The
+  repository no longer ships a prebuilt `app.db` file, so the first startup will create the database and seed cards from the
+  JSON files in `../cards/`.
+- On startup the database layer will recreate the file automatically if it encounters the previously malformed `deck` table
+  definition, preventing the schema error seen in older seeded databases.
 - Token validation for Apple/Google logins is stubbed; wire it to the real OAuth/OpenID Connect verification per provider when ready.
 - Decks can be exported with `GET /admin/decks/{id}/export` (admin token required); connect this to your renderer/export pipeline as needed.
