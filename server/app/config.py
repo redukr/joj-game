@@ -37,16 +37,31 @@ class Settings(BaseSettings):
         ],
         env="ALLOWED_ORIGINS",
     )
-    allowed_origin_regex: str = Field(
-        r"https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?",
+    oauth_audience: List[str] = Field(default_factory=list, env="OAUTH_AUDIENCE")
+    google_issuer: str = Field("https://accounts.google.com", env="GOOGLE_ISSUER")
+    google_jwks_url: str = Field(
+        "https://www.googleapis.com/oauth2/v3/certs", env="GOOGLE_JWKS_URL"
+    )
+    apple_issuer: str = Field("https://appleid.apple.com", env="APPLE_ISSUER")
+    apple_jwks_url: str = Field(
+        "https://appleid.apple.com/auth/keys", env="APPLE_JWKS_URL"
+    )
+    allowed_origin_regex: str | None = Field(
+        None,
         env="ALLOWED_ORIGIN_REGEX",
     )
     default_page_size: int = Field(50, env="DEFAULT_PAGE_SIZE")
 
-    @validator("allowed_oauth_providers", "allowed_origins", pre=True)
+    @validator("allowed_oauth_providers", "allowed_origins", "oauth_audience", pre=True)
     def _split_csv(cls, value):  # noqa: N805
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @validator("allowed_origin_regex", pre=True)
+    def _empty_regex_to_none(cls, value):  # noqa: N805
+        if value in {"", None}:
+            return None
         return value
 
     class Config:

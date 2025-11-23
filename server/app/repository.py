@@ -1,11 +1,17 @@
 import hashlib
 import secrets
+from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
+import requests
 from fastapi import HTTPException, status
-from sqlalchemy import func
-from sqlmodel import Session, select
+from jose import jwt
+from jose.exceptions import JWTError
+from sqlalchemy import func, or_
+from sqlmodel import Session, delete, select
+from passlib.context import CryptContext
 
+from app.config import get_settings
 from app.models import (
     AuthResponse,
     Card,
@@ -30,6 +36,9 @@ from app.models import (
 class Repository:
     def __init__(self, session: Session):
         self.session = session
+        self.settings = get_settings()
+        self._jwks_cache: dict[str, dict] = {}
+        self._pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     # Card helpers
     def add_card(self, payload: CardBase) -> CardRead:
@@ -163,7 +172,58 @@ class Repository:
 
     # Auth helpers
     def _hash_password(self, password: str) -> str:
-        return hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return self._pwd_context.hash(password)
+
+    def _verify_password(self, password: str, password_hash: str | None) -> bool:
+        if not password_hash:
+            return False
+        if self._pwd_context.verify(password, password_hash):
+            return True
+        # Legacy SHA256 fallback for existing guest accounts created before bcrypt rollout
+        legacy_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return legacy_hash == password_hash
+
+    def _get_provider_config(self, provider: Provider) -> tuple[str, str]:
+        if provider == Provider.GOOGLE:
+            return self.settings.google_issuer, self.settings.google_jwks_url
+        if provider == Provider.APPLE:
+            return self.settings.apple_issuer, self.settings.apple_jwks_url
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported provider")
+
+    def _fetch_jwks(self, jwks_url: str) -> dict:
+        if jwks_url in self._jwks_cache:
+            return self._jwks_cache[jwks_url]
+        response = requests.get(jwks_url, timeout=5)
+        if response.status_code != 200:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to fetch provider keys")
+        data = response.json()
+        self._jwks_cache[jwks_url] = data
+        return data
+
+    def _validate_oauth_token(self, provider: Provider, token: str) -> dict:
+        issuer, jwks_url = self._get_provider_config(provider)
+        if not self.settings.oauth_audience:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="OAuth audience is not configured")
+        jwks = self._fetch_jwks(jwks_url)
+        header = jwt.get_unverified_header(token)
+        key = None
+        for jwk in jwks.get("keys", []):
+            if jwk.get("kid") == header.get("kid"):
+                key = jwk
+                break
+        if not key:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown signing key")
+        try:
+            claims = jwt.decode(
+                token,
+                key,
+                algorithms=[header.get("alg", "RS256")],
+                audience=self.settings.oauth_audience,
+                issuer=issuer,
+            )
+        except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OAuth token")
+        return claims
 
     def _generate_user(
         self, provider: Provider, display_name: str, password_hash: str | None
@@ -189,14 +249,29 @@ class Repository:
 
     def _issue_token(self, user_id: str) -> str:
         token_value = secrets.token_urlsafe(32)
-        token = Token(token=token_value, user_id=user_id)
+        expires_at = datetime.utcnow() + timedelta(hours=12)
+        token = Token(token=token_value, user_id=user_id, expires_at=expires_at)
         self.session.add(token)
         self.session.flush()
         return token_value
 
+    def _revoke_user_tokens(self, user_id: str) -> None:
+        self.session.exec(delete(Token).where(Token.user_id == user_id))
+
+    def _cleanup_expired_tokens(self) -> None:
+        now = datetime.utcnow()
+        self.session.exec(delete(Token).where(Token.expires_at < now))
+
     def create_user(self, payload: LoginRequest) -> AuthResponse:
         display_name = payload.display_name or payload.provider.value.title()
         password_hash = None
+        if payload.provider in {Provider.APPLE, Provider.GOOGLE}:
+            if not payload.token:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="OAuth token is required",
+                )
+            self._validate_oauth_token(payload.provider, payload.token)
         if payload.password:
             password_hash = self._hash_password(payload.password)
 
@@ -207,7 +282,9 @@ class Repository:
             )
 
         if existing_user:
-            if existing_user.password_hash and existing_user.password_hash != password_hash:
+            if existing_user.password_hash and not self._verify_password(
+                payload.password or "", existing_user.password_hash
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Incorrect password for existing user",
@@ -219,13 +296,19 @@ class Repository:
             user = existing_user
         else:
             user = self._generate_user(payload.provider, display_name, password_hash)
+        self._revoke_user_tokens(user.id)
         token = self._issue_token(user.id)
         return AuthResponse(access_token=token, user=UserRead.from_orm(user))
 
     def resolve_user(self, token: str) -> UserRead:
+        self._cleanup_expired_tokens()
         token_row = self.session.get(Token, token)
         if not token_row:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        if token_row.expires_at and token_row.expires_at < datetime.utcnow():
+            self.session.delete(token_row)
+            self.session.flush()
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
         user = self.session.get(User, token_row.user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token owner")
@@ -312,7 +395,19 @@ class Repository:
         return self._room_to_read(room, host_user_id)
 
     def list_rooms(self, limit: int, offset: int, current_user_id: str | None = None) -> List[RoomRead]:
-        rooms = self.session.exec(select(Room).offset(offset).limit(limit)).all()
+        base_query = select(Room).where(Room.status == "active")
+        if current_user_id:
+            member_subquery = (
+                select(RoomMembership.room_code)
+                .where(RoomMembership.user_id == current_user_id)
+                .subquery()
+            )
+            base_query = base_query.where(
+                or_(Room.visibility == "public", Room.code.in_(member_subquery))
+            )
+        else:
+            base_query = base_query.where(Room.visibility == "public")
+        rooms = self.session.exec(base_query.offset(offset).limit(limit)).all()
         return [self._room_to_read(room, current_user_id) for room in rooms]
 
     def join_room(self, room_code: str, user_id: str, as_spectator: bool) -> RoomRead:
