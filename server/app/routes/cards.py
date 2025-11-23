@@ -15,5 +15,7 @@ def list_cards(
     repo: Repository = Depends(get_repository),
 ):
     settings = get_settings()
-    limit_value, offset_value = paginate(limit, offset, settings.default_page_size)
+    limit_value, offset_value = paginate(
+        limit, offset, settings.default_page_size, settings.max_page_size
+    )
     return repo.list_cards(limit_value, offset_value)

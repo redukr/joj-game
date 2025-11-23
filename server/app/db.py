@@ -93,6 +93,14 @@ def _apply_migrations() -> None:
                     "ADD COLUMN expires_at DATETIME NOT NULL DEFAULT (datetime('now', '+12 hours'))"
                 )
             )
+    if "revoked_at" not in token_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE token "
+                    "ADD COLUMN revoked_at DATETIME"
+                )
+            )
     _ensure_card_resource_columns()
 
 

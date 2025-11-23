@@ -1,24 +1,41 @@
+import logging
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from pathlib import Path
 
 from app.db import init_db, session_scope
 from app.loaders import load_cards_from_disk
 from app.models import Card
 from app.routes import admin, auth, cards, rooms
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 app = FastAPI(title="JOJ Game Server", version="0.1.0")
 
-allowed_origins = settings.allowed_origins
-allowed_origin_regex = settings.allowed_origin_regex
+def _resolve_cors_settings():
+    """Return sanitized CORS configuration based on environment."""
+
+    origins = settings.allowed_origins or []
+    origin_regex = settings.allowed_origin_regex if settings.environment != "production" else None
+
+    if settings.environment == "production":
+        if not origins:
+            raise ValueError("ALLOWED_ORIGINS must be configured for production")
+    else:
+        if not origins:
+            origins = ["http://localhost:8001", "http://127.0.0.1:8001"]
+
+    return origins, origin_regex
 
 client_web_dir = Path(__file__).resolve().parents[2] / "client-web"
+
+allowed_origins, allowed_origin_regex = _resolve_cors_settings()
 
 app.add_middleware(
     CORSMiddleware,

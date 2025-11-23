@@ -21,13 +21,18 @@ def create_room(
 def list_rooms(
     limit: int | None = None,
     offset: int | None = None,
+    visibility: str | None = None,
+    status: str | None = "active",
+    sort: str | None = "-created_at",
     repo: Repository = Depends(get_repository),
     current_user: UserRead | None = Depends(get_optional_user),
 ):
     settings = get_settings()
-    limit_value, offset_value = paginate(limit, offset, settings.default_page_size)
+    limit_value, offset_value = paginate(
+        limit, offset, settings.default_page_size, settings.max_page_size
+    )
     user_id = current_user.id if current_user else None
-    return repo.list_rooms(limit_value, offset_value, user_id)
+    return repo.list_rooms(limit_value, offset_value, user_id, visibility, status, sort)
 
 
 @router.post("/{code}/join", response_model=RoomRead)

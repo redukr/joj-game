@@ -16,7 +16,9 @@ def create_card(payload: CardBase, repo: Repository = Depends(get_repository)):
 @router.get("/cards", response_model=list[CardRead])
 def list_cards(limit: int | None = None, offset: int | None = None, repo: Repository = Depends(get_repository)):
     settings = get_settings()
-    limit_value, offset_value = paginate(limit, offset, settings.default_page_size)
+    limit_value, offset_value = paginate(
+        limit, offset, settings.default_page_size, settings.max_page_size
+    )
     return repo.list_cards(limit_value, offset_value)
 
 
@@ -38,7 +40,9 @@ def create_deck(payload: DeckBase, repo: Repository = Depends(get_repository)):
 @router.get("/decks", response_model=list[DeckRead])
 def list_decks(limit: int | None = None, offset: int | None = None, repo: Repository = Depends(get_repository)):
     settings = get_settings()
-    limit_value, offset_value = paginate(limit, offset, settings.default_page_size)
+    limit_value, offset_value = paginate(
+        limit, offset, settings.default_page_size, settings.max_page_size
+    )
     return repo.list_decks(limit_value, offset_value)
 
 
