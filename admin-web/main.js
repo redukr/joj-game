@@ -177,17 +177,26 @@ const TRANSLATIONS = {
         cardIds: "Card IDs (comma separated)",
         cardIdsPlaceholder: "1,2,3",
         submit: "Create deck",
+        update: "Save changes",
+        reset: "Reset",
+        cancelEdit: "Cancel edit",
       },
       listEmpty: "No decks yet. Create one above.",
       noDescription: "No description",
       noCards: "No cards assigned",
+      edit: "Edit",
       export: "Export JSON",
       import: {
         label: "Import deck JSON",
         placeholder: '{"deck": {"name": "Starter", "card_ids": []}, "cards": []}',
         hint: "Paste deck export JSON to recreate decks and cards.",
+        targetLabel: "Target deck (optional)",
+        targetNew: "Create new deck",
+        targetHint:
+          "Choose a deck to overwrite with this import, or leave empty to create a new deck.",
         submit: "Import JSON",
       },
+      editing: "Editing deck #{id}. Save or cancel to exit.",
       delete: "Delete",
     },
     users: {
@@ -227,6 +236,7 @@ const TRANSLATIONS = {
       unableLoadDecks: "Unable to load decks: {status}",
       createCardFailed: "Create card failed: {status} {detail}",
       createDeckFailed: "Create deck failed: {status} {detail}",
+      updateDeckFailed: "Update deck failed: {status} {detail}",
       deleteCardFailed: "Delete card failed: {status} {detail}",
       deleteDeckFailed: "Delete deck failed: {status} {detail}",
       exportDeckFailed: "Export failed: {status} {detail}",
@@ -234,12 +244,14 @@ const TRANSLATIONS = {
       cardCreated: 'Created card "{name}" (#{id}).',
       deckNameRequired: "Deck name is required.",
       deckCreated: 'Created deck "{name}" (#{id}).',
+      deckUpdated: 'Updated deck "{name}" (#{id}).',
       deleteCardConfirm: "Delete card #{id}?",
       deleteDeckConfirm: "Delete deck #{id}?",
       deletedCard: "Deleted card #{id}.",
       deletedDeck: "Deleted deck #{id}.",
       exportedDeck: "Exported deck #{id}:\n{payload}",
       deckImported: 'Imported deck "{name}" (#{id}).',
+      deckImportUpdated: 'Replaced deck "{name}" (#{id}) with imported data.',
       importDeckInvalid: "Provide valid deck JSON to import.",
       importDeckFailed: "Import failed: {status} {detail}",
       ready: "Ready. Set your API base URL, register or sign in, or manage data as an admin.",
@@ -435,17 +447,26 @@ const TRANSLATIONS = {
         cardIds: "ID карток (через кому)",
         cardIdsPlaceholder: "1,2,3",
         submit: "Створити колоду",
+        update: "Зберегти зміни",
+        reset: "Скинути",
+        cancelEdit: "Скасувати редагування",
       },
       listEmpty: "Колоди відсутні. Створіть одну вище.",
       noDescription: "Без опису",
       noCards: "Карт не призначено",
+      edit: "Редагувати",
       export: "Експорт JSON",
       import: {
         label: "Імпортувати колоду з JSON",
         placeholder: '{"deck": {"name": "Стартова", "card_ids": []}, "cards": []}',
         hint: "Вставте експортований JSON, щоб відновити колоди та карти.",
+        targetLabel: "Цільова колода (необов'язково)",
+        targetNew: "Створити нову колоду",
+        targetHint:
+          "Оберіть колоду, яку потрібно перезаписати, або залиште порожнім для створення нової.",
         submit: "Імпортувати JSON",
       },
+      editing: "Редагування колоди #{id}. Збережіть або скасуйте, щоб вийти.",
       delete: "Видалити",
     },
     users: {
@@ -496,12 +517,15 @@ const TRANSLATIONS = {
       deleteDeckConfirm: "Видалити колоду #{id}?",
       deletedCard: "Карту #{id} видалено.",
       deletedDeck: "Колоду #{id} видалено.",
-      exportedDeck: "Експорт колоди #{id}:\n{payload}",
-      deckImported: 'Імпортовано колоду "{name}" (#{id}).',
-      importDeckInvalid: "Додайте коректний JSON для імпорту.",
-      importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
-      ready:
-        "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
+        exportedDeck: "Експорт колоди #{id}:\n{payload}",
+        deckImported: 'Імпортовано колоду "{name}" (#{id}).',
+        deckImportUpdated: 'Колоду "{name}" (#{id}) перезаписано імпортом.',
+        importDeckInvalid: "Додайте коректний JSON для імпорту.",
+        importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
+        updateDeckFailed: "Не вдалося оновити колоду: {status} {detail}",
+        deckUpdated: 'Колоду "{name}" (#{id}) оновлено.',
+        ready:
+          "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
       loginFailed: "Помилка входу: {status}",
       registrationSuccess: "Зареєстровано як {name}.",
       loginRequired: "Увійдіть, щоб отримати доступ до цієї сторінки.",
@@ -560,9 +584,12 @@ const deckForm = document.getElementById("deckForm");
 const deckFormError = document.getElementById("deckFormError");
 const resetDeckFormButton = document.getElementById("resetDeckForm");
 const deckImportPayload = document.getElementById("deckImportPayload");
+const deckImportTarget = document.getElementById("deckImportTarget");
+const deckImportError = document.getElementById("deckImportError");
 const importDeckButton = document.getElementById("importDeck");
 const cardsList = document.getElementById("cardsList");
 const decksList = document.getElementById("decksList");
+const deckEditStatus = document.getElementById("deckEditStatus");
 const usersList = document.getElementById("usersList");
 const adminRoomsList = document.getElementById("adminRoomsList");
 const adminOnlySections = document.querySelectorAll("[data-admin-only]");
@@ -586,6 +613,8 @@ let authToken = null;
 let currentUser = null;
 let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
 let deckCards = [];
+let decksCache = [];
+let deckEditId = null;
 let handCards = [];
 let workspaceCards = [];
 let adminTokenIdleTimer = null;
@@ -665,6 +694,8 @@ function setLanguage(language) {
   renderHand();
   renderWorkspace();
   syncAdminUi();
+  syncDeckFormState();
+  updateDeckImportTargets();
 }
 
 function syncNavLinks() {
@@ -1491,6 +1522,9 @@ function renderCards(cards) {
 }
 
 function renderDecks(decks) {
+  decksCache = decks;
+  updateDeckImportTargets();
+
   decksList.innerHTML = "";
   if (!decks.length) {
     decksList.innerHTML = `<li class="muted">${t("decks.listEmpty")}</li>`;
@@ -1521,6 +1555,14 @@ function renderDecks(decks) {
     exportButton.textContent = t("decks.export");
     exportButton.addEventListener("click", () => exportDeck(deck.id));
     actions.appendChild(exportButton);
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "ghost";
+    editButton.textContent = t("decks.edit");
+    editButton.addEventListener("click", () => startDeckEdit(deck));
+    actions.appendChild(editButton);
+
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "ghost";
@@ -1534,6 +1576,80 @@ function renderDecks(decks) {
     item.appendChild(actions);
     decksList.appendChild(item);
   });
+}
+
+function updateDeckImportTargets() {
+  if (!deckImportTarget) return;
+  const previousValue = deckImportTarget.value;
+  deckImportTarget.innerHTML = "";
+
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = t("decks.import.targetNew");
+  deckImportTarget.appendChild(defaultOption);
+
+  decksCache.forEach((deck) => {
+    const option = document.createElement("option");
+    option.value = String(deck.id);
+    option.textContent = `${deck.name} (#${deck.id})`;
+    deckImportTarget.appendChild(option);
+  });
+
+  if (previousValue && decksCache.some((deck) => String(deck.id) === previousValue)) {
+    deckImportTarget.value = previousValue;
+  }
+}
+
+function syncDeckFormState() {
+  if (!deckForm) return;
+  const submitButton = deckForm.querySelector('button[type="submit"]');
+  if (submitButton) {
+    submitButton.textContent = deckEditId
+      ? t("decks.form.update")
+      : t("decks.form.submit");
+  }
+
+  if (resetDeckFormButton) {
+    resetDeckFormButton.textContent = deckEditId
+      ? t("decks.form.cancelEdit")
+      : t("decks.form.reset");
+  }
+
+  if (deckEditStatus) {
+    if (deckEditId) {
+      deckEditStatus.hidden = false;
+      deckEditStatus.textContent = t("decks.editing", { id: deckEditId });
+    } else {
+      deckEditStatus.hidden = true;
+      deckEditStatus.textContent = "";
+    }
+  }
+
+  if (deckForm) {
+    deckForm.classList.toggle("editing", Boolean(deckEditId));
+  }
+}
+
+function startDeckEdit(deck) {
+  if (!deckForm) return;
+  deckEditId = deck.id;
+  deckForm.dataset.editing = String(deck.id);
+  document.getElementById("deckName").value = deck.name || "";
+  document.getElementById("deckDescription").value = deck.description || "";
+  document.getElementById("deckCardIds").value = (deck.card_ids || []).join(",");
+  syncDeckFormState();
+  setFieldError(deckFormError, "");
+  deckForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearDeckEdit() {
+  deckEditId = null;
+  if (deckForm) {
+    delete deckForm.dataset.editing;
+    deckForm.reset();
+  }
+  setFieldError(deckFormError, "");
+  syncDeckFormState();
 }
 
 async function loadCards() {
@@ -1836,7 +1952,7 @@ function parseCardIds(input) {
     .filter((num) => !Number.isNaN(num));
 }
 
-async function createDeck(event) {
+async function submitDeck(event) {
   event.preventDefault();
   setFieldError(deckFormError, "");
   const name = document.getElementById("deckName").value.trim();
@@ -1850,9 +1966,13 @@ async function createDeck(event) {
     return;
   }
 
+  const isEdit = Boolean(deckEditId);
+  const endpoint = isEdit ? `/admin/decks/${deckEditId}` : "/admin/decks";
+  const method = isEdit ? "PUT" : "POST";
+
   try {
-    const response = await fetch(apiUrl("/admin/decks"), {
-      method: "POST",
+    const response = await fetch(apiUrl(endpoint), {
+      method,
       headers: adminHeaders(),
       body: JSON.stringify({ name, description: description || null, card_ids }),
     });
@@ -1860,14 +1980,27 @@ async function createDeck(event) {
     if (!response.ok) {
       const errText = await response.text();
       throw new Error(
-        t("messages.createDeckFailed", { status: response.status, detail: errText })
+        t(isEdit ? "messages.updateDeckFailed" : "messages.createDeckFailed", {
+          status: response.status,
+          detail: errText,
+        })
       );
     }
 
     const deck = await response.json();
-    log(t("messages.deckCreated", { name: deck.name, id: deck.id }));
-    deckForm.reset();
+    log(
+      t(isEdit ? "messages.deckUpdated" : "messages.deckCreated", {
+        name: deck.name,
+        id: deck.id,
+      })
+    );
+    if (!isEdit && deckForm) {
+      deckForm.reset();
+    }
     setFieldError(deckFormError, "");
+    if (isEdit) {
+      clearDeckEdit();
+    }
     await loadDecks();
   } catch (error) {
     setFieldError(deckFormError, error.message);
@@ -1915,6 +2048,9 @@ async function deleteDeck(deckId) {
       );
     }
     log(t("messages.deletedDeck", { id: deckId }));
+    if (deckEditId && Number(deckEditId) === Number(deckId)) {
+      clearDeckEdit();
+    }
     await loadDecks();
   } catch (error) {
     log(error.message, true);
@@ -1945,9 +2081,12 @@ async function exportDeck(deckId) {
 
 async function importDeck() {
   if (!deckImportPayload) return;
+  setFieldError(deckImportError, "");
   const raw = deckImportPayload.value.trim();
   if (!raw) {
-    log(t("messages.importDeckInvalid"), true);
+    const message = t("messages.importDeckInvalid");
+    setFieldError(deckImportError, message);
+    log(message, true);
     return;
   }
 
@@ -1960,7 +2099,11 @@ async function importDeck() {
   }
 
   try {
-    const response = await fetch(apiUrl("/admin/decks/import"), {
+    const targetId = deckImportTarget?.value || "";
+    const endpoint = targetId
+      ? `/admin/decks/${targetId}/import`
+      : "/admin/decks/import";
+    const response = await fetch(apiUrl(endpoint), {
       method: "POST",
       headers: adminHeaders(),
       body: JSON.stringify(payload),
@@ -1973,10 +2116,17 @@ async function importDeck() {
     }
 
     const deck = await response.json();
-    log(t("messages.deckImported", { name: deck.name, id: deck.id }));
+    log(
+      t(targetId ? "messages.deckImportUpdated" : "messages.deckImported", {
+        name: deck.name,
+        id: deck.id,
+      })
+    );
     deckImportPayload.value = "";
+    if (deckImportTarget) deckImportTarget.value = "";
     await loadDecks();
   } catch (error) {
+    setFieldError(deckImportError, error.message);
     log(error.message, true);
   }
 }
@@ -2008,7 +2158,7 @@ function wireEvents() {
   if (refreshAdminRoomsButton)
     refreshAdminRoomsButton.addEventListener("click", loadAdminRooms);
   if (cardForm) cardForm.addEventListener("submit", createCard);
-  if (deckForm) deckForm.addEventListener("submit", createDeck);
+  if (deckForm) deckForm.addEventListener("submit", submitDeck);
   if (resetCardFormButton)
     resetCardFormButton.addEventListener("click", () => {
       cardForm?.reset();
@@ -2016,8 +2166,7 @@ function wireEvents() {
     });
   if (resetDeckFormButton)
     resetDeckFormButton.addEventListener("click", () => {
-      deckForm?.reset();
-      setFieldError(deckFormError, "");
+      clearDeckEdit();
     });
   if (importDeckButton) importDeckButton.addEventListener("click", importDeck);
   if (drawCardButton) drawCardButton.addEventListener("click", drawFromDeck);

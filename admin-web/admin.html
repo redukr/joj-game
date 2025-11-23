@@ -289,9 +289,12 @@
             <div class="field-error" id="deckFormError" aria-live="polite"></div>
             <div class="actions">
               <button type="submit" data-i18n="decks.form.submit">Create deck</button>
-              <button type="button" id="resetDeckForm" class="ghost">Reset</button>
+              <button type="button" id="resetDeckForm" class="ghost" data-i18n="decks.form.reset">
+                Reset
+              </button>
             </div>
           </form>
+          <div class="pill info" id="deckEditStatus" hidden aria-live="polite"></div>
           <div class="stack">
             <label class="field">
               <span data-i18n="decks.import.label">Import deck JSON</span>
@@ -306,9 +309,17 @@
             <p class="hint" data-i18n="decks.import.hint">
               Paste deck export JSON to recreate decks and cards.
             </p>
-            <button id="importDeck" type="button" data-i18n="decks.import.submit">
-              Import JSON
-            </button>
+            <label class="field">
+              <span data-i18n="decks.import.targetLabel">Target deck (optional)</span>
+              <select id="deckImportTarget">
+                <option value="" data-i18n="decks.import.targetNew">Create new deck</option>
+              </select>
+            </label>
+            <p class="hint" data-i18n="decks.import.targetHint">
+              Choose a deck to overwrite with this import, or leave empty to create a new deck.
+            </p>
+            <div class="field-error" id="deckImportError" aria-live="polite"></div>
+            <button id="importDeck" type="button" data-i18n="decks.import.submit">Import JSON</button>
           </div>
           <ul id="decksList" class="list"></ul>
         </article>
