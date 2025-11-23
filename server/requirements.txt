@@ -4,5 +4,7 @@ pydantic==1.10.15
 PyYAML==6.0.1
 sqlmodel==0.0.16
 passlib[bcrypt]==1.7.4
+# Pin bcrypt to avoid compatibility issues with passlib's bcrypt backend
+bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
 requests==2.31.0
