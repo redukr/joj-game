@@ -720,8 +720,11 @@ function syncNavLinks() {
   }
 
   if (navAdminLink) {
-    navAdminLink.setAttribute("aria-disabled", String(!canAccessAdmin));
-    navAdminLink.dataset.guardMessage = "messages.accessWarning";
+    const adminLinkEnabled = canAccessAdmin || pageName === "admin";
+    navAdminLink.setAttribute("aria-disabled", String(!adminLinkEnabled));
+    navAdminLink.dataset.guardMessage = adminLinkEnabled
+      ? ""
+      : "messages.accessWarning";
   }
 
   enforceRestrictedPageAccess();
