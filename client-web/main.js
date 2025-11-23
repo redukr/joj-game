@@ -180,6 +180,8 @@ const TRANSLATIONS = {
       unableLoadDecks: "Unable to load decks: {status}",
       createCardFailed: "Create card failed: {status} {detail}",
       createDeckFailed: "Create deck failed: {status} {detail}",
+      invalidAdminToken: "Invalid admin token.",
+      adminTokenCheckFailed: "Unable to verify admin token: {status}",
       deleteCardFailed: "Delete card failed: {status} {detail}",
       deleteDeckFailed: "Delete deck failed: {status} {detail}",
       exportDeckFailed: "Export failed: {status} {detail}",
@@ -372,6 +374,8 @@ const TRANSLATIONS = {
       unableLoadDecks: "Не вдалося завантажити колоди: {status}",
       createCardFailed: "Не вдалося створити карту: {status} {detail}",
       createDeckFailed: "Не вдалося створити колоду: {status} {detail}",
+      invalidAdminToken: "Невірний адмін-токен.",
+      adminTokenCheckFailed: "Не вдалося перевірити адмін-токен: {status}",
       deleteCardFailed: "Не вдалося видалити карту: {status} {detail}",
       deleteDeckFailed: "Не вдалося видалити колоду: {status} {detail}",
       exportDeckFailed: "Не вдалося експортувати: {status} {detail}",
@@ -433,6 +437,8 @@ let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
 let deckCards = [];
 let handCards = [];
 let workspaceCards = [];
+let adminTokenStatus = { value: "", isValid: false };
+let adminValidationTimer = null;
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -547,6 +553,9 @@ function requireAdminToken() {
   if (!token) {
     throw new Error(t("messages.adminTokenRequired"));
   }
+  if (!adminTokenStatus.isValid || adminTokenStatus.value !== token) {
+    throw new Error(t("messages.invalidAdminToken"));
+  }
   return token;
 }
 
@@ -608,13 +617,48 @@ function adminHeaders() {
   };
 }
 
-function hasAdminToken() {
-  return Boolean(adminTokenInput && adminTokenInput.value.trim());
+function scheduleAdminTokenValidation() {
+  if (!adminTokenInput) return;
+  clearTimeout(adminValidationTimer);
+  const token = adminTokenInput.value.trim();
+  adminTokenStatus = { value: token, isValid: false };
+  syncAdminUi();
+  if (!token) {
+    return;
+  }
+  adminValidationTimer = setTimeout(validateAdminToken, 300);
+}
+
+async function validateAdminToken() {
+  const token = adminTokenStatus.value;
+  if (!token) {
+    syncAdminUi();
+    return;
+  }
+  try {
+    const response = await fetch(apiUrl("/admin/verify"), {
+      headers: { "X-Admin-Token": token },
+    });
+    if (adminTokenStatus.value !== token) {
+      return;
+    }
+    if (!response.ok) {
+      adminTokenStatus.isValid = false;
+      log(t("messages.adminTokenCheckFailed", { status: response.status }), true);
+    } else {
+      adminTokenStatus.isValid = true;
+    }
+  } catch (error) {
+    adminTokenStatus.isValid = false;
+    log(error.message, true);
+  } finally {
+    syncAdminUi();
+  }
 }
 
 function syncAdminUi() {
   if (!adminTokenInput) return;
-  const adminMode = hasAdminToken();
+  const adminMode = adminTokenStatus.isValid;
   adminOnlySections.forEach((section) => {
     section.hidden = !adminMode;
   });
@@ -1436,7 +1480,10 @@ function wireEvents() {
     registerGuestButton.addEventListener("click", handleGuestRegistration);
   if (roomForm) roomForm.addEventListener("submit", createRoom);
   if (refreshRoomsButton) refreshRoomsButton.addEventListener("click", loadRooms);
-  if (adminTokenInput) adminTokenInput.addEventListener("input", syncAdminUi);
+  if (adminTokenInput) {
+    adminTokenInput.addEventListener("input", scheduleAdminTokenValidation);
+    adminTokenInput.addEventListener("blur", scheduleAdminTokenValidation);
+  }
   if (refreshAdminDataButton)
     refreshAdminDataButton.addEventListener("click", loadAdminData);
   if (refreshCardsButton) refreshCardsButton.addEventListener("click", loadCards);
@@ -1456,7 +1503,7 @@ function wireEvents() {
 persistApiBase();
 setLanguage(currentLanguage);
 wireEvents();
-syncAdminUi();
+scheduleAdminTokenValidation();
 setUserInfo();
 restoreSession();
 log(t("messages.ready"));
