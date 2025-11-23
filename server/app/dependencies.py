@@ -20,18 +20,6 @@ def get_repository(session=Depends(get_session)) -> Repository:
     return Repository(session)
 
 
-def require_admin(
-    x_admin_token: str | None = Header(None, alias="X-Admin-Token"),
-    settings=Depends(get_settings_dep),
-    current_user: UserRead | None = Depends(get_optional_user),
-):
-    if x_admin_token and x_admin_token == settings.admin_token:
-        return
-    if current_user and current_user.role == Role.ADMIN:
-        return
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin access required")
-
-
 _logger = logging.getLogger(__name__)
 bearer_scheme = HTTPBearer(auto_error=True)
 optional_bearer_scheme = HTTPBearer(auto_error=False)
@@ -88,3 +76,15 @@ def get_optional_user(
         return None
     token = _extract_token(request, credentials)
     return repo.resolve_user(token)
+
+
+def require_admin(
+    x_admin_token: str | None = Header(None, alias="X-Admin-Token"),
+    settings=Depends(get_settings_dep),
+    current_user: UserRead | None = Depends(get_optional_user),
+):
+    if x_admin_token and x_admin_token == settings.admin_token:
+        return
+    if current_user and current_user.role == Role.ADMIN:
+        return
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin access required")
