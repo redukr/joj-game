@@ -10,6 +10,7 @@ from app.config import get_settings
 
 from app.db import init_db, session_scope
 from app.loaders import load_cards_from_disk
+from app.repository import Repository
 from app.models import Card
 from app.routes import admin, auth, cards, rooms
 
@@ -113,9 +114,11 @@ def _startup():
     init_db()
     cards_dir = Path(__file__).resolve().parents[2] / "cards"
     with session_scope() as session:
+        repo = Repository(session)
         has_cards = session.query(Card).first() is not None
         if not has_cards:
             load_cards_from_disk(session, cards_dir)
+        repo.ensure_admin_user("admin2", "admin2")
 
 
 @app.get("/health")

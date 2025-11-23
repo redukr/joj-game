@@ -133,6 +133,11 @@ class LoginRequest(SQLModel):
         allow_population_by_field_name = True
 
 
+class PasswordChangeRequest(SQLModel):
+    current_password: str = Field(..., min_length=4, max_length=128)
+    new_password: str = Field(..., min_length=4, max_length=128)
+
+
 class RoomCreate(SQLModel):
     name: str
     max_players: int = Field(

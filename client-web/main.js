@@ -478,6 +478,10 @@ const sessionApiChip = document.getElementById("sessionApiChip");
 const sessionUserChip = document.getElementById("sessionUserChip");
 const sessionRoomChip = document.getElementById("sessionRoomChip");
 const sessionAdminChip = document.getElementById("sessionAdminChip");
+const navLoginLink = document.querySelector('[data-nav="login"]');
+const navGameLink = document.querySelector('[data-nav="game"]');
+const navManagementLink = document.querySelector('[data-nav="management"]');
+const navAdminLink = document.querySelector('[data-nav="admin"]');
 const adminTokenInput = document.getElementById("adminToken");
 const refreshAdminDataButton = document.getElementById("refreshAdminData");
 const refreshCardsButton = document.getElementById("refreshCards");
@@ -580,6 +584,28 @@ function setChipText(chip, { label, value, tone = null, hidden = false }) {
   }
 }
 
+function syncNavLinks() {
+  const isLoggedIn = Boolean(authToken && currentUser);
+
+  if (navLoginLink) {
+    navLoginLink.textContent = "LOGIN";
+    navLoginLink.hidden = false;
+  }
+
+  if (navGameLink) {
+    navGameLink.textContent = "GAME";
+    navGameLink.hidden = !isLoggedIn;
+  }
+
+  if (navManagementLink) {
+    navManagementLink.hidden = true;
+  }
+
+  if (navAdminLink) {
+    navAdminLink.hidden = true;
+  }
+}
+
 function syncSessionBar() {
   if (sessionApiChip && apiBaseInput) {
     const apiValue = apiBaseInput.value.trim() || t("session.userGuest");
@@ -632,6 +658,8 @@ function syncSessionBar() {
       tone,
     });
   }
+
+  syncNavLinks();
 }
 
 function withBusyState(button, task) {
