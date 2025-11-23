@@ -187,6 +187,7 @@ const TRANSLATIONS = {
       adminTokenRequired: "Enter the admin token first.",
       sessionExpired: "Session expired. Please log in again.",
       sessionRestored: "Restored previous session.",
+      loggedOut: "Logged out. You can sign in again when ready.",
       loginSuccess: "Logged in as {name}.",
       displayNameRequired: "Display name is required",
       passwordRequired: "Password is required",
@@ -413,6 +414,7 @@ const TRANSLATIONS = {
       adminTokenRequired: "Спочатку введіть адмін-токен.",
       sessionExpired: "Сесію завершено. Увійдіть ще раз.",
       sessionRestored: "Попередню сесію відновлено.",
+      loggedOut: "Ви вийшли із сеансу. Можете увійти знову, коли будете готові.",
       loginSuccess: "Увійшли як {name}.",
       displayNameRequired: "Потрібно вказати ім'я гравця",
       passwordRequired: "Потрібно ввести пароль",
@@ -482,6 +484,7 @@ const navLoginLink = document.querySelector('[data-nav="login"]');
 const navGameLink = document.querySelector('[data-nav="game"]');
 const navManagementLink = document.querySelector('[data-nav="management"]');
 const navAdminLink = document.querySelector('[data-nav="admin"]');
+const navLogoutButton = document.getElementById("logoutButton");
 const adminTokenInput = document.getElementById("adminToken");
 const refreshAdminDataButton = document.getElementById("refreshAdminData");
 const refreshCardsButton = document.getElementById("refreshCards");
@@ -589,7 +592,7 @@ function syncNavLinks() {
 
   if (navLoginLink) {
     navLoginLink.textContent = "LOGIN";
-    navLoginLink.hidden = false;
+    navLoginLink.hidden = isLoggedIn;
   }
 
   if (navGameLink) {
@@ -603,6 +606,11 @@ function syncNavLinks() {
 
   if (navAdminLink) {
     navAdminLink.hidden = true;
+  }
+
+  if (navLogoutButton) {
+    navLogoutButton.hidden = !isLoggedIn;
+    navLogoutButton.disabled = !isLoggedIn;
   }
 }
 
@@ -909,6 +917,15 @@ function handleAuthFailure() {
   log(t("messages.sessionExpired"), true);
   setAuthSession(null, null);
   setUserInfo();
+}
+
+function logoutUser() {
+  setAuthSession(null, null);
+  setUserInfo();
+  log(t("messages.loggedOut"));
+  if (pageName !== "auth") {
+    window.location.href = "index.html";
+  }
 }
 
 function resetGameplayState() {
@@ -1746,6 +1763,7 @@ function wireEvents() {
     languageSelector.addEventListener("change", (event) => {
       setLanguage(event.target.value);
     });
+  if (navLogoutButton) navLogoutButton.addEventListener("click", logoutUser);
 }
 
 persistApiBase();

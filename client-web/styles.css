@@ -42,7 +42,8 @@ header {
   margin: 0.5rem 0 0;
 }
 
-.nav a {
+.nav a,
+.nav .nav-action {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -53,6 +54,15 @@ header {
   border: 1px solid #cbd5e1;
   background: #fff;
   font-weight: 600;
+}
+
+.nav .nav-action {
+  cursor: pointer;
+}
+
+.nav .nav-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .nav a.active {
