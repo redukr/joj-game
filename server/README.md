@@ -19,9 +19,8 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    ```bash
    pip install -r requirements.txt
    ```
-3. Configure environment (optional). Set an admin token and allowed OAuth providers in `.env`:
+3. Configure environment (optional). Set allowed OAuth providers in `.env`:
    ```bash
-   echo "ADMIN_TOKEN=supersecret" > .env
    echo "ALLOWED_OAUTH_PROVIDERS=apple,google,guest" >> .env
    # Add extra origins for the web client if needed (defaults allow any localhost/127.x port)
    echo "ALLOWED_ORIGINS=http://localhost:8001,http://localhost:8002,http://localhost:4173" >> .env
@@ -42,9 +41,9 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
 
 ## API surface
 - `POST /auth/login` — sign in with provider `apple`, `google`, or `guest` (default if omitted); returns bearer token for subsequent calls. Payload accepts both `display_name` and `displayName` keys for guest sign-up/login.
-- `POST /admin/cards` — create a card (requires `X-Admin-Token` header).
+- `POST /admin/cards` — create a card (requires admin bearer token).
 - `PUT /admin/cards/{id}` / `DELETE /admin/cards/{id}` — maintain cards.
-- `POST /admin/decks` — create deck from existing cards (requires `X-Admin-Token`).
+- `POST /admin/decks` — create deck from existing cards (requires admin bearer token).
 - `POST /rooms` — create a room using `Authorization: Bearer <token>` from `/auth/login`.
 - `GET /rooms` — list all rooms.
 
@@ -55,4 +54,4 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
 - On startup the database layer will recreate the file automatically if it encounters the previously malformed `deck` table
   definition, preventing the schema error seen in older seeded databases.
 - Token validation for Apple/Google logins is stubbed; wire it to the real OAuth/OpenID Connect verification per provider when ready.
-- Decks can be exported with `GET /admin/decks/{id}/export` (admin token required); connect this to your renderer/export pipeline as needed.
+- Decks can be exported with `GET /admin/decks/{id}/export`; connect this to your renderer/export pipeline as needed.
