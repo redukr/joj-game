@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JOJ Game - Main</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="main">
+    <header>
+      <div class="header-main">
+        <div>
+          <h1>Game Lobby</h1>
+          <p class="subtitle">
+            Create or browse rooms and interact with the gameplay workspace.
+          </p>
+        </div>
+        <div class="language-switcher">
+          <label class="field" for="languageSelector">
+            <span data-i18n="language.label">Language</span>
+            <select id="languageSelector" name="languageSelector">
+              <option value="en">English</option>
+              <option value="uk">Українська</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">Login</a>
+        <a href="main.html" class="active">Game</a>
+        <a href="management.html">Management</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </header>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 data-i18n="rooms.list.heading">Rooms</h2>
+          <p class="muted">Signed-in players can create and refresh game rooms.</p>
+        </div>
+        <div id="userInfo" class="pill"></div>
+      </div>
+      <div class="grid">
+        <article class="card nested-card">
+          <h3 data-i18n="rooms.create.heading">Create room</h3>
+          <form id="roomForm">
+            <label class="field">
+              <span data-i18n="rooms.create.name">Room name</span>
+              <input
+                id="roomName"
+                name="roomName"
+                type="text"
+                required
+                placeholder="Briefing Room"
+                data-i18n-placeholder="rooms.create.namePlaceholder"
+              />
+            </label>
+            <label class="field">
+              <span data-i18n="rooms.create.maxPlayers">Max players (2-6)</span>
+              <input
+                id="maxPlayers"
+                name="maxPlayers"
+                type="number"
+                min="2"
+                max="6"
+                required
+                value="4"
+              />
+            </label>
+            <label class="field">
+              <span data-i18n="rooms.create.maxSpectators">Max spectators (0-10)</span>
+              <input
+                id="maxSpectators"
+                name="maxSpectators"
+                type="number"
+                min="0"
+                max="10"
+                required
+                value="0"
+              />
+            </label>
+            <button type="submit" data-i18n="rooms.create.submit">Create room</button>
+          </form>
+        </article>
+
+        <article class="card nested-card">
+          <div class="card-header">
+            <h3 data-i18n="rooms.list.heading">Rooms</h3>
+            <div class="actions">
+              <button id="refreshRooms" data-i18n="rooms.list.refresh">Refresh</button>
+            </div>
+          </div>
+          <ul id="roomsList" class="list"></ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 data-i18n="game.heading">Gameplay workspace</h2>
+          <p class="muted">
+            Draw and arrange cards locally after authenticating as a player.
+          </p>
+        </div>
+        <div class="actions">
+          <button id="drawCard" type="button" data-i18n="game.draw">Draw card</button>
+          <button id="resetGameplay" type="button" class="ghost" data-i18n="game.reset">
+            Reset table
+          </button>
+        </div>
+      </div>
+      <p class="hint" data-i18n="game.hint">
+        Available once you sign in. Cards are pulled from the server deck so you can try drawing and arranging them locally.
+      </p>
+      <div id="resourceBar" class="resource-bar"></div>
+      <div id="gameSection" class="grid game-grid" hidden>
+        <article class="card nested-card">
+          <div class="card-header">
+            <h3 data-i18n="game.deck.heading">Deck</h3>
+            <div class="pill" id="deckCount">0 cards</div>
+          </div>
+          <p class="muted" data-i18n="game.deck.hint">Use Draw to pull the next card into your hand.</p>
+        </article>
+
+        <article class="card nested-card">
+          <div class="card-header">
+            <h3 data-i18n="game.hand.heading">Hand</h3>
+          </div>
+          <ul id="handList" class="list compact-list"></ul>
+        </article>
+
+        <article class="card nested-card">
+          <div class="card-header">
+            <h3 data-i18n="game.workspace.heading">Workspace</h3>
+          </div>
+          <ul id="workspaceList" class="list compact-list"></ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="status.heading">Status</h2>
+      <pre id="statusArea" class="status"></pre>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="server.heading">Server connection</h2>
+      <label class="field">
+        <span data-i18n="server.apiBase">API base URL</span>
+        <input id="apiBase" type="url" value="http://localhost:8000" />
+      </label>
+      <p class="hint" data-i18n="server.hint">
+        Update this if your server runs on a different host or port.
+      </p>
+    </section>
+
+    <script src="main.js"></script>
+  </body>
+</html>
