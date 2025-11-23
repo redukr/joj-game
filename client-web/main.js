@@ -11,6 +11,23 @@ const TRANSLATIONS = {
   en: {
     title: "JOJ Game Web Client",
     subtitle: "Interact with the FastAPI server from your browser.",
+    layout: {
+      game: {
+        heading: "Game Lobby",
+        subheading:
+          "Create or browse rooms and interact with the gameplay workspace.",
+      },
+      admin: {
+        heading: "Administrative tools",
+        subheading:
+          "Manage cards and decks with an admin token supplied by the server.",
+      },
+      management: {
+        heading: "Management hub",
+        subheading:
+          "Choose which module to manage: system, players, cards, or decks.",
+      },
+    },
     language: { label: "Language" },
     server: {
       heading: "Server connection",
@@ -24,6 +41,12 @@ const TRANSLATIONS = {
       hint1: "Needed for the /admin API. Stored only in this page during your session.",
       hint2: "Admin tools appear once a token is provided.",
       loadData: "Load cards & decks",
+      status: {
+        idle: "Enter the admin token to unlock tools.",
+        checking: "Checking admin token...",
+        valid: "Admin token validated.",
+        invalid: "Admin token invalid.",
+      },
     },
     login: {
       heading: "Guest login",
@@ -205,6 +228,23 @@ const TRANSLATIONS = {
   uk: {
     title: "Вебклієнт JOJ Game",
     subtitle: "Працюйте з сервером FastAPI просто у браузері.",
+    layout: {
+      game: {
+        heading: "Ігрове лобі",
+        subheading:
+          "Створюйте або переглядайте кімнати та працюйте з ігровим простором.",
+      },
+      admin: {
+        heading: "Адміністративні інструменти",
+        subheading:
+          "Керуйте картами та колодами за допомогою адмін-токена від сервера.",
+      },
+      management: {
+        heading: "Центр керування",
+        subheading:
+          "Оберіть модуль для керування: система, гравці, карти чи колоди.",
+      },
+    },
     language: { label: "Мова" },
     server: {
       heading: "Підключення до сервера",
@@ -218,6 +258,12 @@ const TRANSLATIONS = {
       hint1: "Потрібен для API /admin. Зберігається лише під час сеансу сторінки.",
       hint2: "Інструменти адміністратора з'являються після введення токена.",
       loadData: "Завантажити карти та колоди",
+      status: {
+        idle: "Введіть адмін-токен, щоб розблокувати інструменти.",
+        checking: "Перевіряємо адмін-токен...",
+        valid: "Адмін-токен підтверджено.",
+        invalid: "Адмін-токен недійсний.",
+      },
     },
     login: {
       heading: "Гостьовий вхід",
@@ -414,6 +460,7 @@ const adminTokenInput = document.getElementById("adminToken");
 const refreshAdminDataButton = document.getElementById("refreshAdminData");
 const refreshCardsButton = document.getElementById("refreshCards");
 const refreshDecksButton = document.getElementById("refreshDecks");
+const adminTokenStatusLabel = document.getElementById("adminTokenStatus");
 const cardForm = document.getElementById("cardForm");
 const deckForm = document.getElementById("deckForm");
 const deckImportPayload = document.getElementById("deckImportPayload");
@@ -437,7 +484,7 @@ let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
 let deckCards = [];
 let handCards = [];
 let workspaceCards = [];
-let adminTokenStatus = { value: "", isValid: false };
+let adminTokenStatus = { value: "", isValid: false, isChecking: false };
 let adminValidationTimer = null;
 
 const STARTING_RESOURCES = {
@@ -512,6 +559,7 @@ function setLanguage(language) {
   renderDeckCount();
   renderHand();
   renderWorkspace();
+  syncAdminUi();
 }
 
 function log(message, isError = false) {
@@ -519,8 +567,10 @@ function log(message, isError = false) {
   const line = `[${prefix}] ${message}`;
   if (statusArea) {
     statusArea.textContent = `${line}\n${statusArea.textContent}`.trim();
+    statusArea.classList.toggle("error", isError);
+    statusArea.setAttribute("aria-label", line);
     if (isError) {
-      statusArea.classList.add("error");
+      statusArea.scrollTop = 0;
     }
   } else {
     console[isError ? "error" : "log"](line);
@@ -621,7 +671,7 @@ function scheduleAdminTokenValidation() {
   if (!adminTokenInput) return;
   clearTimeout(adminValidationTimer);
   const token = adminTokenInput.value.trim();
-  adminTokenStatus = { value: token, isValid: false };
+  adminTokenStatus = { value: token, isValid: false, isChecking: Boolean(token) };
   syncAdminUi();
   if (!token) {
     return;
@@ -635,6 +685,8 @@ async function validateAdminToken() {
     syncAdminUi();
     return;
   }
+  adminTokenStatus.isChecking = true;
+  syncAdminUi();
   try {
     const response = await fetch(apiUrl("/admin/verify"), {
       headers: { "X-Admin-Token": token },
@@ -652,6 +704,7 @@ async function validateAdminToken() {
     adminTokenStatus.isValid = false;
     log(error.message, true);
   } finally {
+    adminTokenStatus.isChecking = false;
     syncAdminUi();
   }
 }
@@ -659,14 +712,29 @@ async function validateAdminToken() {
 function syncAdminUi() {
   if (!adminTokenInput) return;
   const adminMode = adminTokenStatus.isValid;
+  const adminBusy = adminTokenStatus.isChecking;
   adminOnlySections.forEach((section) => {
     section.hidden = !adminMode;
   });
   [refreshAdminDataButton, refreshCardsButton, refreshDecksButton].forEach((button) => {
     if (button) {
-      button.disabled = !adminMode;
+      button.disabled = !adminMode || adminBusy;
     }
   });
+  if (adminTokenStatusLabel) {
+    let statusKey = "admin.status.idle";
+    if (adminTokenStatus.isChecking) {
+      statusKey = "admin.status.checking";
+    } else if (adminMode) {
+      statusKey = "admin.status.valid";
+    } else if (adminTokenStatus.value) {
+      statusKey = "admin.status.invalid";
+    }
+    adminTokenStatusLabel.textContent = t(statusKey);
+    adminTokenStatusLabel.hidden = !adminTokenStatus.value;
+    adminTokenStatusLabel.classList.toggle("success", adminMode);
+    adminTokenStatusLabel.classList.toggle("warning", adminBusy);
+  }
 }
 
 function setUserInfo() {

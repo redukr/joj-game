@@ -7,11 +7,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="admin">
+    <a class="skip-link" href="#statusArea">Skip to status updates</a>
     <header>
       <div class="header-main">
         <div>
-          <h1>Administrative tools</h1>
-          <p class="subtitle">
+          <h1 data-i18n="layout.admin.heading">Administrative tools</h1>
+          <p class="subtitle" data-i18n="layout.admin.subheading">
             Manage cards and decks with an admin token supplied by the server.
           </p>
         </div>
@@ -26,8 +27,8 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="http://localhost:8001/index.html">Login</a>
-        <a href="http://localhost:8001/main.html">Game</a>
+        <a href="../client-web/index.html">Login</a>
+        <a href="../client-web/main.html">Game</a>
         <a href="management.html">Management</a>
         <a href="admin.html" class="active">Admin</a>
       </nav>
@@ -64,6 +65,7 @@
             data-i18n-placeholder="admin.tokenPlaceholder"
           />
         </label>
+        <div id="adminTokenStatus" class="pill muted" aria-live="polite"></div>
         <p class="hint" data-i18n="admin.hint1">
           Needed for the /admin API. Stored only in this page during your session.
         </p>
@@ -241,7 +243,13 @@
 
     <section class="card">
       <h2 data-i18n="status.heading">Status</h2>
-      <pre id="statusArea" class="status"></pre>
+      <pre
+        id="statusArea"
+        class="status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+      ></pre>
     </section>
 
     <script src="main.js"></script>

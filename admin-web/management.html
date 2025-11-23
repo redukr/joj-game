@@ -7,11 +7,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="management">
+    <a class="skip-link" href="#statusArea">Skip to status updates</a>
     <header>
       <div class="header-main">
         <div>
-          <h1>Management hub</h1>
-          <p class="subtitle">
+          <h1 data-i18n="layout.management.heading">Management hub</h1>
+          <p class="subtitle" data-i18n="layout.management.subheading">
             Choose which module to manage: system, players, cards, or decks.
           </p>
         </div>
@@ -26,8 +27,8 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="http://localhost:8001/index.html">Login</a>
-        <a href="http://localhost:8001/main.html">Game</a>
+        <a href="../client-web/index.html">Login</a>
+        <a href="../client-web/main.html">Game</a>
         <a href="management.html" class="active">Management</a>
         <a href="admin.html">Admin</a>
       </nav>
@@ -71,7 +72,13 @@
 
     <section class="card">
       <h2 data-i18n="status.heading">Status</h2>
-      <pre id="statusArea" class="status"></pre>
+      <pre
+        id="statusArea"
+        class="status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+      ></pre>
     </section>
 
     <script src="main.js"></script>
