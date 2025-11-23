@@ -8,6 +8,7 @@
   </head>
   <body data-page="main">
     <a class="skip-link" href="#statusArea">Skip to status updates</a>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <header>
       <div class="header-main">
         <div>
@@ -66,7 +67,7 @@
       <div class="grid">
         <article class="card nested-card">
           <h3 data-i18n="rooms.create.heading">Create room</h3>
-          <form id="roomForm">
+          <form id="roomForm" novalidate>
             <label class="field">
               <span data-i18n="rooms.create.name">Room name</span>
               <input
@@ -102,6 +103,7 @@
                 value="0"
               />
             </label>
+            <div class="field-error" id="roomFormError" aria-live="polite"></div>
             <button type="submit" data-i18n="rooms.create.submit">Create room</button>
           </form>
         </article>
@@ -113,7 +115,26 @@
               <button id="refreshRooms" data-i18n="rooms.list.refresh">Refresh</button>
             </div>
           </div>
-          <ul id="roomsList" class="list"></ul>
+          <div class="table-wrapper" role="region" aria-live="polite">
+            <table class="data-table" id="roomsTable">
+              <caption data-i18n="rooms.list.heading">Rooms</caption>
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="rooms.meta.code">Code</th>
+                  <th scope="col" data-i18n="rooms.meta.name">Name</th>
+                  <th scope="col" data-i18n="rooms.meta.host">Host</th>
+                  <th scope="col" data-i18n="rooms.meta.players">Players</th>
+                  <th scope="col" data-i18n="rooms.meta.spectators">Spectators</th>
+                  <th scope="col" data-i18n="rooms.meta.visibility">Visibility</th>
+                  <th scope="col" data-i18n="rooms.meta.status">Status</th>
+                  <th scope="col" data-i18n="rooms.meta.joinable">Joinable</th>
+                  <th scope="col" data-i18n="rooms.meta.created">Created</th>
+                  <th scope="col" data-i18n="rooms.join.cta">Join</th>
+                </tr>
+              </thead>
+              <tbody id="roomsTableBody"></tbody>
+            </table>
+          </div>
         </article>
       </div>
     </section>

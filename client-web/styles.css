@@ -56,6 +56,17 @@ header {
   font-weight: 600;
 }
 
+.nav a:focus-visible,
+.nav .nav-action:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.35);
+}
+
 .nav .nav-action {
   cursor: pointer;
 }
@@ -104,6 +115,23 @@ h1 {
   padding: 1rem 1.25rem;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
   margin-bottom: 1rem;
+}
+
+.toast {
+  position: fixed;
+  inset-inline-end: 1.5rem;
+  bottom: 1.5rem;
+  max-width: 320px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+}
+
+.toast.error {
+  background: #b91c1c;
 }
 
 .session-bar {
@@ -164,6 +192,16 @@ h1 {
   margin-bottom: 0.75rem;
 }
 
+.field-error {
+  color: #b91c1c;
+  font-weight: 600;
+  min-height: 1.2rem;
+}
+
+.field-error:empty {
+  display: none;
+}
+
 label span {
   font-weight: 600;
   color: #0f172a;
@@ -181,6 +219,17 @@ input:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.nav a:focus-visible,
+.button:focus-visible,
+.nav .nav-action:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
 }
 
 button {
@@ -267,6 +316,45 @@ button.ghost {
 
 .list li .pill {
   margin-left: 0.5rem;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.data-table caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.data-table thead {
+  background: #f1f5f9;
+}
+
+.data-table tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.data-table tr.active-room {
+  background: #eef2ff;
 }
 
 .item-actions {
