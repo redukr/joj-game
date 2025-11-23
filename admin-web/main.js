@@ -534,6 +534,10 @@ const decksList = document.getElementById("decksList");
 const usersList = document.getElementById("usersList");
 const adminRoomsList = document.getElementById("adminRoomsList");
 const adminOnlySections = document.querySelectorAll("[data-admin-only]");
+const navLoginLink = document.querySelector('[data-nav="login"]');
+const navGameLink = document.querySelector('[data-nav="game"]');
+const navManagementLink = document.querySelector('[data-nav="management"]');
+const navAdminLink = document.querySelector('[data-nav="admin"]');
 const gameSection = document.getElementById("gameSection");
 const deckCount = document.getElementById("deckCount");
 const resourceBar = document.getElementById("resourceBar");
@@ -627,6 +631,28 @@ function setLanguage(language) {
   renderHand();
   renderWorkspace();
   syncAdminUi();
+}
+
+function syncNavLinks() {
+  const isLoggedIn = Boolean(authToken && currentUser);
+
+  if (navLoginLink) {
+    navLoginLink.textContent = "LOGIN";
+    navLoginLink.hidden = false;
+  }
+
+  if (navGameLink) {
+    navGameLink.textContent = "GAME";
+    navGameLink.hidden = !isLoggedIn;
+  }
+
+  if (navManagementLink) {
+    navManagementLink.hidden = true;
+  }
+
+  if (navAdminLink) {
+    navAdminLink.hidden = true;
+  }
 }
 
 function log(message, isError = false) {
@@ -798,6 +824,7 @@ function setUserInfo() {
   if (!currentUser) {
     userInfo.textContent = t("login.notSignedIn");
     syncAdminUi();
+    syncNavLinks();
     return;
   }
   const roomNote = currentRoomCode
@@ -805,6 +832,7 @@ function setUserInfo() {
     : "";
   userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})${roomNote}`;
   syncAdminUi();
+  syncNavLinks();
 }
 
 function handleAuthFailure() {
