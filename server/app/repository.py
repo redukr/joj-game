@@ -120,31 +120,29 @@ class Repository:
 
     def import_deck(self, payload: DeckImport) -> DeckRead:
         new_card_ids: list[int] = []
+        replacement_map: dict[int, int] = {}
         for card_payload in payload.cards:
             card = Card.from_orm(card_payload)
             self.session.add(card)
             self.session.flush()
             self.session.refresh(card)
             new_card_ids.append(card.id)
+            replacement_map[card_payload.id] = card.id
 
         deck_payload = payload.deck
 
         if new_card_ids:
-            card_ids = list(deck_payload.card_ids or [])
+            original_card_ids = list(deck_payload.card_ids or [])
+            card_ids = list(original_card_ids)
             if card_ids:
-                unique_existing_ids: list[int] = []
-                for cid in card_ids:
-                    if cid not in unique_existing_ids:
-                        unique_existing_ids.append(cid)
-
-                replacement_map = {
-                    old_id: new_id
-                    for old_id, new_id in zip(unique_existing_ids, new_card_ids)
-                }
                 card_ids = [replacement_map.get(cid, cid) for cid in card_ids]
-
-                if len(new_card_ids) > len(unique_existing_ids):
-                    card_ids.extend(new_card_ids[len(unique_existing_ids) :])
+                if len(new_card_ids) > len(set(original_card_ids)):
+                    extra_new_ids = [
+                        new_id
+                        for old_id, new_id in replacement_map.items()
+                        if old_id not in original_card_ids
+                    ]
+                    card_ids.extend(extra_new_ids)
             else:
                 card_ids = new_card_ids
         else:
