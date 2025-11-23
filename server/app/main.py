@@ -29,7 +29,12 @@ def _resolve_cors_settings():
             raise ValueError("ALLOWED_ORIGINS must be configured for production")
     else:
         if not origins:
-            origins = ["http://localhost:8001", "http://127.0.0.1:8001"]
+            origins = [
+                "http://localhost:8001",
+                "http://127.0.0.1:8001",
+                "http://localhost:8002",
+                "http://127.0.0.1:8002",
+            ]
 
     return origins, origin_regex
 
