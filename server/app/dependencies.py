@@ -28,3 +28,18 @@ def get_current_user(authorization: str = Header(..., alias="Authorization"), re
     if scheme.lower() != "bearer":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Use Bearer token")
     return repo.resolve_user(token)
+
+
+def get_optional_user(
+    authorization: str | None = Header(None, alias="Authorization"),
+    repo: Repository = Depends(get_repository),
+):
+    if not authorization:
+        return None
+    try:
+        scheme, token = authorization.split()
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Authorization header")
+    if scheme.lower() != "bearer":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Use Bearer token")
+    return repo.resolve_user(token)

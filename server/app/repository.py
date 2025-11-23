@@ -3,6 +3,7 @@ import secrets
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.models import (
@@ -17,6 +18,7 @@ from app.models import (
     Provider,
     Room,
     RoomCreate,
+    RoomMembership,
     RoomRead,
     Token,
     User,
@@ -193,6 +195,44 @@ class Repository:
             if not existing:
                 return code
 
+    def _membership_counts(self, room_code: str) -> tuple[int, int]:
+        counts = self.session.exec(
+            select(RoomMembership.role, func.count())
+            .where(RoomMembership.room_code == room_code)
+            .group_by(RoomMembership.role)
+        ).all()
+        player_count = 0
+        spectator_count = 0
+        for role, amount in counts:
+            if role == "spectator":
+                spectator_count = amount
+            else:
+                player_count = amount
+        return player_count, spectator_count
+
+    def _room_to_read(self, room: Room, current_user_id: str | None = None) -> RoomRead:
+        player_count, spectator_count = self._membership_counts(room.code)
+        is_joined = False
+        if current_user_id:
+            is_joined = (
+                self.session.get(RoomMembership, (room.code, current_user_id)) is not None
+            )
+        is_joinable = room.status == "active" and player_count < room.max_players
+        return RoomRead(
+            code=room.code,
+            name=room.name,
+            host_user_id=room.host_user_id,
+            max_players=room.max_players,
+            max_spectators=room.max_spectators,
+            visibility=room.visibility,
+            status=room.status,
+            player_count=player_count,
+            spectator_count=spectator_count,
+            is_joined=is_joined,
+            is_joinable=is_joinable,
+            created_at=room.created_at,
+        )
+
     def create_room(self, payload: RoomCreate, host_user_id: str) -> RoomRead:
         code = self._generate_unique_code()
         room = Room(
@@ -202,14 +242,41 @@ class Repository:
             max_players=payload.max_players,
             max_spectators=payload.max_spectators,
             visibility=payload.visibility,
+            status=payload.status,
         )
         self.session.add(room)
         self.session.flush()
-        return RoomRead.from_orm(room)
+        host_membership = RoomMembership(room_code=room.code, user_id=host_user_id, role="player")
+        self.session.add(host_membership)
+        self.session.flush()
+        return self._room_to_read(room, host_user_id)
 
-    def list_rooms(self, limit: int, offset: int) -> List[RoomRead]:
+    def list_rooms(self, limit: int, offset: int, current_user_id: str | None = None) -> List[RoomRead]:
         rooms = self.session.exec(select(Room).offset(offset).limit(limit)).all()
-        return [RoomRead.from_orm(room) for room in rooms]
+        return [self._room_to_read(room, current_user_id) for room in rooms]
+
+    def join_room(self, room_code: str, user_id: str, as_spectator: bool) -> RoomRead:
+        room = self.session.get(Room, room_code)
+        if not room:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+        if room.status != "active":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not joinable")
+
+        existing = self.session.get(RoomMembership, (room_code, user_id))
+        if existing:
+            return self._room_to_read(room, user_id)
+
+        player_count, spectator_count = self._membership_counts(room_code)
+        role = "spectator" if as_spectator else "player"
+        if role == "player" and player_count >= room.max_players:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is full for players")
+        if role == "spectator" and spectator_count >= room.max_spectators:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is full for spectators")
+
+        membership = RoomMembership(room_code=room_code, user_id=user_id, role=role)
+        self.session.add(membership)
+        self.session.flush()
+        return self._room_to_read(room, user_id)
 
 
 def paginate(limit: Optional[int], offset: Optional[int], default_limit: int) -> Tuple[int, int]:
