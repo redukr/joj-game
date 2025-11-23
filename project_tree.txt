@@ -70,6 +70,7 @@
 │           └── appsettings.json
 ├── manual.txt
 ├── oria.py
+├── project_tree.txt
 ├── server
 │   ├── README.md
 │   ├── app
@@ -81,16 +82,19 @@
 │   │   ├── main.py
 │   │   ├── models.py
 │   │   ├── repository.py
-│   │   └── routes
-│   │       ├── __init__.py
-│   │       ├── admin.py
-│   │       ├── auth.py
-│   │       ├── cards.py
-│   │       └── rooms.py
+│   │   ├── routes
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── auth.py
+│   │   │   ├── cards.py
+│   │   │   └── rooms.py
+│   │   ├── test_integration.py
+│   │   └── test_models_unit.py
 │   ├── config
 │   │   └── settings.yaml
 │   ├── data
 │   │   └── app.db
 │   ├── error-log.txt
 │   └── requirements.txt
-└── strat-server.bat
+├── strat-server.bat
+└── structure.md
