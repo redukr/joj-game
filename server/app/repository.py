@@ -37,7 +37,9 @@ class Repository:
         self.session = session
         self.settings = get_settings()
         self._jwks_cache: dict[str, dict] = {}
-        self._pwd_context = CryptContext(schemes=["bcrypt", "scrypt"], deprecated="auto")
+        self._pwd_context = CryptContext(
+            schemes=["bcrypt_sha256", "bcrypt", "scrypt"], deprecated="auto"
+        )
 
     # Card helpers
     def _ensure_card_unique(self, name: str, category: str | None, existing_id: int | None = None) -> None:
