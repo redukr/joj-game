@@ -655,6 +655,7 @@ let adminLastActivityAt = null;
 let adminStatus = { isActive: false, isChecking: false };
 let sessionCheckComplete = false;
 let toastTimer = null;
+let adminTokenBootstrapAllowed = false;
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -880,8 +881,11 @@ function syncNavLinks() {
   }
 
   if (navAdminLink) {
-    navAdminLink.setAttribute("aria-disabled", String(!canAccessAdmin));
-    navAdminLink.dataset.guardMessage = "messages.accessWarning";
+    const adminLinkEnabled = canAccessAdmin || pageName === "admin";
+    navAdminLink.setAttribute("aria-disabled", String(!adminLinkEnabled));
+    navAdminLink.dataset.guardMessage = adminLinkEnabled
+      ? ""
+      : "messages.accessWarning";
   }
 
   enforceRestrictedPageAccess();
@@ -1098,7 +1102,9 @@ function redirectToLogin() {
   window.location.href = ROUTES.login;
 }
 
-function enforceRestrictedPageAccess() {
+function enforceRestrictedPageAccess(options = {}) {
+  const { allowAdminTokenEntry = false } = options;
+  const adminTokenEntryAllowed = allowAdminTokenEntry || adminTokenBootstrapAllowed;
   if (!sessionCheckComplete) {
     return true;
   }
@@ -1108,11 +1114,15 @@ function enforceRestrictedPageAccess() {
     showAccessBanner("messages.loginRequired");
     return false;
   }
-  if (pageName === "admin" && !hasAdminAccess()) {
-    log(t("messages.adminRoleRequired"), true);
-    showAccessBanner("messages.accessWarning");
-    return false;
+  const hasAccess = hasAdminAccess();
+  if (pageName === "admin" && !hasAccess) {
+    if (!adminTokenEntryAllowed) {
+      log(t("messages.adminRoleRequired"), true);
+      showAccessBanner("messages.accessWarning");
+    }
+    return adminTokenEntryAllowed;
   }
+  adminTokenBootstrapAllowed = false;
   hideAccessBanner();
   return true;
 }
@@ -1506,7 +1516,8 @@ async function restoreSession() {
     }
   }
   sessionCheckComplete = true;
-  enforceRestrictedPageAccess();
+  adminTokenBootstrapAllowed = pageName === "admin" && !hasAdminAccess();
+  enforceRestrictedPageAccess({ allowAdminTokenEntry: true });
 }
 
 function getGuestCredentials() {
