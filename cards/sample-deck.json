@@ -1,0 +1,29 @@
+{
+  "deck": {
+    "name": "Starter deck",
+    "description": "A few starter cards to showcase fields and limits",
+    "card_ids": [1, 2]
+  },
+  "cards": [
+    {
+      "name": "Ляп на брифінгу",
+      "description": "Втрачено репутацію через невдалий виступ",
+      "category": "scandal",
+      "time": -1,
+      "reputation": -2,
+      "discipline": 0,
+      "documents": 0,
+      "technology": 0
+    },
+    {
+      "name": "Успішна презентація",
+      "description": "Покращуємо настрій команди та заощаджуємо час",
+      "category": "success",
+      "time": 1,
+      "reputation": 2,
+      "discipline": 1,
+      "documents": 0,
+      "technology": 1
+    }
+  ]
+}

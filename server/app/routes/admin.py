@@ -8,6 +8,11 @@ from app.repository import Repository, paginate
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
+@router.get("/verify")
+def verify_admin():
+    return {"status": "ok"}
+
+
 @router.post("/cards", response_model=CardRead)
 def create_card(payload: CardBase, repo: Repository = Depends(get_repository)):
     return repo.add_card(payload)
