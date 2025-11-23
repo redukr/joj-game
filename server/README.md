@@ -41,7 +41,7 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    ```
 
 ## API surface
-- `POST /auth/login` — sign in with provider `apple`, `google`, or `guest`; returns bearer token for subsequent calls.
+- `POST /auth/login` — sign in with provider `apple`, `google`, or `guest` (default if omitted); returns bearer token for subsequent calls. Payload accepts both `display_name` and `displayName` keys for guest sign-up/login.
 - `POST /admin/cards` — create a card (requires `X-Admin-Token` header).
 - `PUT /admin/cards/{id}` / `DELETE /admin/cards/{id}` — maintain cards.
 - `POST /admin/decks` — create deck from existing cards (requires `X-Admin-Token`).

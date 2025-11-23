@@ -89,15 +89,26 @@ class AuthResponse(SQLModel):
 
 
 class LoginRequest(SQLModel):
-    provider: Provider
+    provider: Provider = Field(
+        Provider.GUEST,
+        description="Authentication provider; defaults to guest for simple registration",
+    )
     token: Optional[str] = Field(None, description="ID token from the provider")
-    display_name: Optional[str] = Field(None, description="Fallback name for guest accounts")
+    display_name: Optional[str] = Field(
+        None,
+        alias="displayName",
+        description="Fallback name for guest accounts",
+    )
     password: Optional[str] = Field(
         None,
         min_length=4,
         max_length=128,
+        alias="password",
         description="Password used for guest/local authentication",
     )
+
+    class Config:
+        allow_population_by_field_name = True
 
 
 class RoomCreate(SQLModel):
