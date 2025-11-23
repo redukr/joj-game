@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import List, Optional
 
+from pydantic import validator
 from sqlalchemy import Column, String, UniqueConstraint
 from sqlalchemy.dialects.sqlite import JSON
 from sqlmodel import Field, SQLModel
@@ -10,6 +11,16 @@ from sqlmodel import Field, SQLModel
 class Role(str, Enum):
     ADMIN = "admin"
     USER = "user"
+
+
+def _normalize_role_value(value: Role | str | None) -> Role:
+    if isinstance(value, Role):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in Role._value2member_map_:
+            return Role(lowered)
+    return Role.USER
 
 
 class Provider(str, Enum):
@@ -84,6 +95,10 @@ class User(SQLModel, table=True):
         sa_column=Column(String, nullable=False),
     )
 
+    @validator("role", pre=True)
+    def normalize_role(cls, value: Role | str | None) -> Role:  # noqa: N805
+        return _normalize_role_value(value)
+
 
 class UserRead(SQLModel):
     id: str
@@ -91,12 +106,20 @@ class UserRead(SQLModel):
     display_name: str
     role: Role
 
+    @validator("role", pre=True)
+    def normalize_role(cls, value: Role | str | None) -> Role:  # noqa: N805
+        return _normalize_role_value(value)
+
     class Config:
         orm_mode = True
 
 
 class UserRoleUpdate(SQLModel):
     role: Role
+
+    @validator("role", pre=True)
+    def normalize_role(cls, value: Role | str | None) -> Role:  # noqa: N805
+        return _normalize_role_value(value)
 
 
 class Token(SQLModel, table=True):
