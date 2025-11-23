@@ -6,7 +6,7 @@
     <title>JOJ Game Web Client</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-page="auth" data-redirect-after-auth="main.html">
     <header>
       <div class="header-main">
         <div>
@@ -25,42 +25,13 @@
           </label>
         </div>
       </div>
+      <nav class="nav">
+        <a href="index.html" class="active">Login</a>
+        <a href="main.html">Game</a>
+        <a href="management.html">Management</a>
+        <a href="admin.html">Admin</a>
+      </nav>
     </header>
-
-    <section class="card module-nav">
-      <h2>Module overview</h2>
-      <p class="hint">
-        Jump to the part of the web client that matches the feature you want to
-        exercise.
-      </p>
-      <div class="grid">
-        <article class="card nested-card">
-          <h3>Base/Core game module</h3>
-          <p class="muted">
-            Everything a player needs: sign-in, registration, game creation, and
-            live gameplay controls.
-          </p>
-          <ul class="list compact-list">
-            <li><a href="#base-login">Login page</a></li>
-            <li><a href="#base-register">Registration page</a></li>
-            <li><a href="#base-create-game">Create a game</a></li>
-            <li><a href="#gameSection">Game page</a></li>
-          </ul>
-        </article>
-        <article class="card nested-card">
-          <h3>Administrative module</h3>
-          <p class="muted">
-            Tools for administrators to manage cards and decks once an admin
-            token is provided.
-          </p>
-          <ul class="list compact-list">
-            <li><a href="#adminModule">Admin access</a></li>
-            <li><a href="#cardsSection">Cards workspace</a></li>
-            <li><a href="#decksSection">Decks workspace</a></li>
-          </ul>
-        </article>
-      </div>
-    </section>
 
     <section class="card">
       <h2 data-i18n="server.heading">Server connection</h2>
@@ -73,267 +44,80 @@
       </p>
     </section>
 
-    <section id="baseModule" class="module">
-      <div class="card">
-        <div class="card-header">
-          <h2>Base/Core game module</h2>
-          <p class="muted">
-            The player-facing flow: authenticate, register, establish a room, and
-            interact with the game table.
-          </p>
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 data-i18n="login.heading">Guest login</h2>
+          <p class="muted">First step: register or log in to continue.</p>
         </div>
-        <div class="grid">
-          <article class="card" id="base-login">
-            <h2 data-i18n="login.heading">Guest login</h2>
-            <form id="guestLoginForm">
-              <label class="field">
-                <span data-i18n="login.displayName">Display name</span>
-                <input
-                  id="displayName"
-                  name="displayName"
-                  type="text"
-                  required
-                  placeholder="Battle Planner"
-                  data-i18n-placeholder="login.displayNamePlaceholder"
-                />
-              </label>
-              <label class="field" id="base-register">
-                <span data-i18n="login.password">Password</span>
-                <input
-                  id="loginPassword"
-                  name="loginPassword"
-                  type="password"
-                  required
-                  placeholder="Enter a password"
-                  data-i18n-placeholder="login.passwordPlaceholder"
-                />
-              </label>
-              <button id="registerGuest" type="button" data-i18n="login.register">
-                Register
-              </button>
-              <button type="submit" data-i18n="login.submit">Sign in</button>
-            </form>
-            <div id="userInfo" class="muted"></div>
-          </article>
-
-          <article class="card" id="base-create-game">
-            <h2 data-i18n="rooms.create.heading">Create room</h2>
-            <form id="roomForm">
-              <label class="field">
-                <span data-i18n="rooms.create.name">Room name</span>
-                <input
-                  id="roomName"
-                  name="roomName"
-                  type="text"
-                  required
-                  placeholder="Briefing Room"
-                  data-i18n-placeholder="rooms.create.namePlaceholder"
-                />
-              </label>
-              <label class="field">
-                <span data-i18n="rooms.create.maxPlayers">Max players (2-6)</span>
-                <input
-                  id="maxPlayers"
-                  name="maxPlayers"
-                  type="number"
-                  min="2"
-                  max="6"
-                  required
-                  value="4"
-                />
-              </label>
-              <label class="field">
-                <span data-i18n="rooms.create.maxSpectators">Max spectators (0-10)</span>
-                <input
-                  id="maxSpectators"
-                  name="maxSpectators"
-                  type="number"
-                  min="0"
-                  max="10"
-                  required
-                  value="0"
-                />
-              </label>
-              <button type="submit" data-i18n="rooms.create.submit">Create room</button>
-            </form>
-            <p class="hint" data-i18n="rooms.create.hint">
-              Requires a logged-in user; uses your bearer token automatically.
-            </p>
-          </article>
+        <div class="actions">
+          <a class="ghost" href="management.html">Skip to management</a>
+          <a class="ghost" href="admin.html">Admin module</a>
         </div>
-
-        <section class="card">
-          <div class="card-header">
-            <h2 data-i18n="rooms.list.heading">Rooms</h2>
-            <div class="actions">
-              <button id="refreshRooms" data-i18n="rooms.list.refresh">Refresh</button>
-            </div>
-          </div>
-          <ul id="roomsList" class="list"></ul>
-        </section>
-
-        <section id="gameSection" class="card" hidden>
-          <div class="card-header">
-            <h2 data-i18n="game.heading">Gameplay workspace</h2>
-            <div class="actions">
-              <button id="drawCard" type="button" data-i18n="game.draw">Draw card</button>
-              <button id="resetGameplay" type="button" class="ghost" data-i18n="game.reset">
-                Reset table
-              </button>
-            </div>
-          </div>
-          <p class="hint" data-i18n="game.hint">
-            Available once you sign in. Cards are pulled from the server deck so you can try drawing and arranging them locally.
-          </p>
-          <div id="resourceBar" class="resource-bar"></div>
-          <div class="grid game-grid">
-            <article class="card nested-card">
-              <div class="card-header">
-                <h3 data-i18n="game.deck.heading">Deck</h3>
-                <div class="pill" id="deckCount">0 cards</div>
-              </div>
-              <p class="muted" data-i18n="game.deck.hint">Use Draw to pull the next card into your hand.</p>
-            </article>
-
-            <article class="card nested-card">
-              <div class="card-header">
-                <h3 data-i18n="game.hand.heading">Hand</h3>
-              </div>
-              <ul id="handList" class="list compact-list"></ul>
-            </article>
-
-            <article class="card nested-card">
-              <div class="card-header">
-                <h3 data-i18n="game.workspace.heading">Workspace</h3>
-              </div>
-              <ul id="workspaceList" class="list compact-list"></ul>
-            </article>
-          </div>
-        </section>
       </div>
-    </section>
-
-    <section id="adminModule" class="module">
-      <div class="card">
-        <div class="card-header">
-          <h2 data-i18n="admin.heading">Admin access</h2>
-          <p class="muted">
-            Administrative controls to seed, inspect, and maintain core game
-            assets.
-          </p>
-        </div>
+      <form id="guestLoginForm">
         <label class="field">
-          <span data-i18n="admin.token">Admin token</span>
+          <span data-i18n="login.displayName">Display name</span>
           <input
-            id="adminToken"
-            name="adminToken"
-            type="password"
-            autocomplete="off"
-            placeholder="Paste the server ADMIN_TOKEN value"
-            data-i18n-placeholder="admin.tokenPlaceholder"
+            id="displayName"
+            name="displayName"
+            type="text"
+            required
+            placeholder="Battle Planner"
+            data-i18n-placeholder="login.displayNamePlaceholder"
           />
         </label>
-        <p class="hint" data-i18n="admin.hint1">
-          Needed for the /admin API. Stored only in this page during your session.
-        </p>
-        <p class="hint" data-i18n="admin.hint2">Admin tools appear once a token is provided.</p>
+        <label class="field">
+          <span data-i18n="login.password">Password</span>
+          <input
+            id="loginPassword"
+            name="loginPassword"
+            type="password"
+            required
+            placeholder="Enter a password"
+            data-i18n-placeholder="login.passwordPlaceholder"
+          />
+        </label>
         <div class="actions">
-          <button id="refreshAdminData" type="button" data-i18n="admin.loadData">
-            Load cards & decks
+          <button id="registerGuest" type="button" data-i18n="login.register">
+            Register
           </button>
+          <button type="submit" data-i18n="login.submit">Sign in</button>
         </div>
+      </form>
+      <p class="hint">
+        After successful authentication you will be redirected to the game page
+        to create or join rooms.
+      </p>
+      <div id="userInfo" class="muted"></div>
+    </section>
+
+    <section class="card">
+      <h2>Modules</h2>
+      <div class="grid">
+        <article class="card nested-card">
+          <h3>Game and rooms</h3>
+          <p class="muted">
+            Continue to the main lobby to create game rooms or see what other
+            players have opened.
+          </p>
+          <a class="button" href="main.html">Go to main.html</a>
+        </article>
+        <article class="card nested-card">
+          <h3>Management</h3>
+          <p class="muted">
+            Browse high-level system, player, card, and deck options.
+          </p>
+          <a class="button" href="management.html">Go to management.html</a>
+        </article>
+        <article class="card nested-card">
+          <h3>Admin</h3>
+          <p class="muted">
+            Supply your admin token to seed, inspect, and maintain core assets.
+          </p>
+          <a class="button" href="admin.html">Go to admin.html</a>
+        </article>
       </div>
-
-      <section class="grid">
-        <article class="card" data-admin-only id="cardsSection">
-          <div class="card-header">
-            <h2 data-i18n="cards.heading">Cards</h2>
-            <div class="actions">
-              <button id="refreshCards" type="button" data-i18n="cards.refresh">Refresh</button>
-            </div>
-          </div>
-          <form id="cardForm">
-            <label class="field">
-              <span data-i18n="cards.form.name">Name</span>
-              <input
-                id="cardName"
-                name="cardName"
-                type="text"
-                required
-                placeholder="Surprise Event"
-                data-i18n-placeholder="cards.form.namePlaceholder"
-              />
-            </label>
-            <label class="field">
-              <span data-i18n="cards.form.description">Description</span>
-              <input
-                id="cardDescription"
-                name="cardDescription"
-                type="text"
-                required
-                placeholder="Something unexpected happens"
-                data-i18n-placeholder="cards.form.descriptionPlaceholder"
-              />
-            </label>
-            <label class="field">
-              <span data-i18n="cards.form.category">Category (optional)</span>
-              <input
-                id="cardCategory"
-                name="cardCategory"
-                type="text"
-                placeholder="chaos"
-                data-i18n-placeholder="cards.form.categoryPlaceholder"
-              />
-            </label>
-            <button type="submit" data-i18n="cards.form.submit">Create card</button>
-          </form>
-          <ul id="cardsList" class="list"></ul>
-        </article>
-
-        <article class="card" data-admin-only id="decksSection">
-          <div class="card-header">
-            <h2 data-i18n="decks.heading">Decks</h2>
-            <div class="actions">
-              <button id="refreshDecks" type="button" data-i18n="decks.refresh">Refresh</button>
-            </div>
-          </div>
-          <form id="deckForm">
-            <label class="field">
-              <span data-i18n="decks.form.name">Name</span>
-              <input
-                id="deckName"
-                name="deckName"
-                type="text"
-                required
-                placeholder="Starter Deck"
-                data-i18n-placeholder="decks.form.namePlaceholder"
-              />
-            </label>
-            <label class="field">
-              <span data-i18n="decks.form.description">Description (optional)</span>
-              <input
-                id="deckDescription"
-                name="deckDescription"
-                type="text"
-                placeholder="Default cards"
-                data-i18n-placeholder="decks.form.descriptionPlaceholder"
-              />
-            </label>
-            <label class="field">
-              <span data-i18n="decks.form.cardIds">Card IDs (comma separated)</span>
-              <input
-                id="deckCardIds"
-                name="deckCardIds"
-                type="text"
-                placeholder="1,2,3"
-                data-i18n-placeholder="decks.form.cardIdsPlaceholder"
-              />
-            </label>
-            <button type="submit" data-i18n="decks.form.submit">Create deck</button>
-          </form>
-          <ul id="decksList" class="list"></ul>
-        </article>
-      </section>
     </section>
 
     <section class="card">

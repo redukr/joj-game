@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JOJ Game - Management</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="management">
+    <header>
+      <div class="header-main">
+        <div>
+          <h1>Management hub</h1>
+          <p class="subtitle">
+            Choose which module to manage: system, players, cards, or decks.
+          </p>
+        </div>
+        <div class="language-switcher">
+          <label class="field" for="languageSelector">
+            <span data-i18n="language.label">Language</span>
+            <select id="languageSelector" name="languageSelector">
+              <option value="en">English</option>
+              <option value="uk">Українська</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">Login</a>
+        <a href="main.html">Game</a>
+        <a href="management.html" class="active">Management</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </header>
+
+    <section class="card">
+      <h2 data-i18n="server.heading">Server connection</h2>
+      <label class="field">
+        <span data-i18n="server.apiBase">API base URL</span>
+        <input id="apiBase" type="url" value="http://localhost:8000" />
+      </label>
+      <p class="hint" data-i18n="server.hint">
+        Update this if your server runs on a different host or port.
+      </p>
+    </section>
+
+    <section class="grid">
+      <article class="card nested-card">
+        <h3>System management</h3>
+        <p class="muted">
+          Track overall server health and configuration from FastAPI endpoints.
+        </p>
+        <a class="button" href="main.html">Check lobby</a>
+      </article>
+      <article class="card nested-card">
+        <h3>Player management</h3>
+        <p class="muted">
+          Use the login page to add players, then monitor their rooms here.
+        </p>
+        <a class="button" href="main.html">View player rooms</a>
+      </article>
+      <article class="card nested-card">
+        <h3>Card & deck management</h3>
+        <p class="muted">
+          Go to the admin module to seed or maintain cards and decks with your
+          admin token.
+        </p>
+        <a class="button" href="admin.html">Open admin tools</a>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="status.heading">Status</h2>
+      <pre id="statusArea" class="status"></pre>
+    </section>
+
+    <script src="main.js"></script>
+  </body>
+</html>

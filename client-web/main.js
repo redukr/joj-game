@@ -325,6 +325,7 @@ const TRANSLATIONS = {
 
 let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
 
+const pageName = document.body.dataset.page || "all";
 const statusArea = document.getElementById("statusArea");
 const apiBaseInput = document.getElementById("apiBase");
 const guestLoginForm = document.getElementById("guestLoginForm");
@@ -433,17 +434,27 @@ function setLanguage(language) {
 function log(message, isError = false) {
   const prefix = new Date().toLocaleTimeString();
   const line = `[${prefix}] ${message}`;
-  statusArea.textContent = `${line}\n${statusArea.textContent}`.trim();
-  if (isError) {
-    statusArea.classList.add("error");
+  if (statusArea) {
+    statusArea.textContent = `${line}\n${statusArea.textContent}`.trim();
+    if (isError) {
+      statusArea.classList.add("error");
+    }
+  } else {
+    console[isError ? "error" : "log"](line);
   }
 }
 
 function apiUrl(path) {
+  if (!apiBaseInput) {
+    return path;
+  }
   return `${apiBaseInput.value.replace(/\/$/, "")}${path}`;
 }
 
 function requireAdminToken() {
+  if (!adminTokenInput) {
+    throw new Error(t("messages.adminTokenRequired"));
+  }
   const token = adminTokenInput.value.trim();
   if (!token) {
     throw new Error(t("messages.adminTokenRequired"));
@@ -472,20 +483,24 @@ function adminHeaders() {
 }
 
 function hasAdminToken() {
-  return Boolean(adminTokenInput.value.trim());
+  return Boolean(adminTokenInput && adminTokenInput.value.trim());
 }
 
 function syncAdminUi() {
+  if (!adminTokenInput) return;
   const adminMode = hasAdminToken();
   adminOnlySections.forEach((section) => {
     section.hidden = !adminMode;
   });
   [refreshAdminDataButton, refreshCardsButton, refreshDecksButton].forEach((button) => {
-    button.disabled = !adminMode;
+    if (button) {
+      button.disabled = !adminMode;
+    }
   });
 }
 
 function setUserInfo() {
+  if (!userInfo) return;
   if (!currentUser) {
     userInfo.textContent = t("login.notSignedIn");
     return;
@@ -536,6 +551,7 @@ function renderDeckCount() {
 }
 
 function renderCardList(target, cards, options) {
+  if (!target) return;
   const { emptyText, actions = [] } = options;
   target.innerHTML = "";
   if (!cards.length) {
@@ -610,7 +626,7 @@ function shuffleDeck(cards) {
 }
 
 async function prepareGameplayArea() {
-  if (!authToken) return;
+  if (!authToken || !gameSection) return;
   try {
     const response = await fetch(apiUrl("/cards"));
     if (!response.ok) {
@@ -685,7 +701,11 @@ async function restoreSession() {
 }
 
 function getGuestCredentials() {
-  const displayName = document.getElementById("displayName").value.trim();
+  const displayNameInput = document.getElementById("displayName");
+  if (!displayNameInput || !loginPasswordInput) {
+    return null;
+  }
+  const displayName = displayNameInput.value.trim();
   const password = loginPasswordInput.value.trim();
   if (!displayName) {
     log(t("messages.displayNameRequired"), true);
@@ -721,6 +741,11 @@ async function authenticateGuest(successMessageKey) {
     setAuthSession(data.access_token, data.user);
     log(t(successMessageKey, { name: currentUser.display_name }));
     setUserInfo();
+    const redirectTarget = document.body.dataset.redirectAfterAuth;
+    if (redirectTarget) {
+      window.location.href = redirectTarget;
+      return;
+    }
     await loadRooms();
     await prepareGameplayArea();
   } catch (error) {
@@ -739,6 +764,7 @@ async function handleGuestRegistration(event) {
 }
 
 async function loadRooms() {
+  if (!roomsList) return;
   try {
     const response = await fetch(apiUrl("/rooms"));
     if (!response.ok) {
@@ -756,6 +782,7 @@ async function loadRooms() {
 }
 
 function renderRooms(rooms) {
+  if (!roomsList) return;
   roomsList.innerHTML = "";
   if (!rooms.length) {
     roomsList.innerHTML = `<li class="muted">${t("rooms.list.empty")}</li>`;
@@ -931,6 +958,7 @@ function renderDecks(decks) {
 }
 
 async function loadCards() {
+  if (!cardsList || !adminTokenInput) return;
   try {
     const response = await fetch(apiUrl("/admin/cards"), {
       headers: { "X-Admin-Token": requireAdminToken() },
@@ -947,6 +975,7 @@ async function loadCards() {
 }
 
 async function loadDecks() {
+  if (!decksList || !adminTokenInput) return;
   try {
     const response = await fetch(apiUrl("/admin/decks"), {
       headers: { "X-Admin-Token": requireAdminToken() },
@@ -1103,21 +1132,25 @@ async function loadAdminData() {
 }
 
 function wireEvents() {
-  guestLoginForm.addEventListener("submit", handleGuestLogin);
-  registerGuestButton.addEventListener("click", handleGuestRegistration);
-  roomForm.addEventListener("submit", createRoom);
-  refreshRoomsButton.addEventListener("click", loadRooms);
-  adminTokenInput.addEventListener("input", syncAdminUi);
-  refreshAdminDataButton.addEventListener("click", loadAdminData);
-  refreshCardsButton.addEventListener("click", loadCards);
-  refreshDecksButton.addEventListener("click", loadDecks);
-  cardForm.addEventListener("submit", createCard);
-  deckForm.addEventListener("submit", createDeck);
-  drawCardButton.addEventListener("click", drawFromDeck);
-  resetGameplayButton.addEventListener("click", prepareGameplayArea);
-  languageSelector.addEventListener("change", (event) => {
-    setLanguage(event.target.value);
-  });
+  if (guestLoginForm) guestLoginForm.addEventListener("submit", handleGuestLogin);
+  if (registerGuestButton)
+    registerGuestButton.addEventListener("click", handleGuestRegistration);
+  if (roomForm) roomForm.addEventListener("submit", createRoom);
+  if (refreshRoomsButton) refreshRoomsButton.addEventListener("click", loadRooms);
+  if (adminTokenInput) adminTokenInput.addEventListener("input", syncAdminUi);
+  if (refreshAdminDataButton)
+    refreshAdminDataButton.addEventListener("click", loadAdminData);
+  if (refreshCardsButton) refreshCardsButton.addEventListener("click", loadCards);
+  if (refreshDecksButton) refreshDecksButton.addEventListener("click", loadDecks);
+  if (cardForm) cardForm.addEventListener("submit", createCard);
+  if (deckForm) deckForm.addEventListener("submit", createDeck);
+  if (drawCardButton) drawCardButton.addEventListener("click", drawFromDeck);
+  if (resetGameplayButton)
+    resetGameplayButton.addEventListener("click", prepareGameplayArea);
+  if (languageSelector)
+    languageSelector.addEventListener("change", (event) => {
+      setLanguage(event.target.value);
+    });
 }
 
 setLanguage(currentLanguage);

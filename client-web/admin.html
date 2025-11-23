@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JOJ Game - Admin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="admin">
+    <header>
+      <div class="header-main">
+        <div>
+          <h1>Administrative tools</h1>
+          <p class="subtitle">
+            Manage cards and decks with an admin token supplied by the server.
+          </p>
+        </div>
+        <div class="language-switcher">
+          <label class="field" for="languageSelector">
+            <span data-i18n="language.label">Language</span>
+            <select id="languageSelector" name="languageSelector">
+              <option value="en">English</option>
+              <option value="uk">Українська</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">Login</a>
+        <a href="main.html">Game</a>
+        <a href="management.html">Management</a>
+        <a href="admin.html" class="active">Admin</a>
+      </nav>
+    </header>
+
+    <section class="card">
+      <h2 data-i18n="server.heading">Server connection</h2>
+      <label class="field">
+        <span data-i18n="server.apiBase">API base URL</span>
+        <input id="apiBase" type="url" value="http://localhost:8000" />
+      </label>
+      <p class="hint" data-i18n="server.hint">
+        Update this if your server runs on a different host or port.
+      </p>
+    </section>
+
+    <section id="adminModule" class="module">
+      <div class="card">
+        <div class="card-header">
+          <h2 data-i18n="admin.heading">Admin access</h2>
+          <p class="muted">
+            Administrative controls to seed, inspect, and maintain core game
+            assets.
+          </p>
+        </div>
+        <label class="field">
+          <span data-i18n="admin.token">Admin token</span>
+          <input
+            id="adminToken"
+            name="adminToken"
+            type="password"
+            autocomplete="off"
+            placeholder="Paste the server ADMIN_TOKEN value"
+            data-i18n-placeholder="admin.tokenPlaceholder"
+          />
+        </label>
+        <p class="hint" data-i18n="admin.hint1">
+          Needed for the /admin API. Stored only in this page during your session.
+        </p>
+        <p class="hint" data-i18n="admin.hint2">Admin tools appear once a token is provided.</p>
+        <div class="actions">
+          <button id="refreshAdminData" type="button" data-i18n="admin.loadData">
+            Load cards & decks
+          </button>
+        </div>
+      </div>
+
+      <section class="grid">
+        <article class="card" data-admin-only id="cardsSection">
+          <div class="card-header">
+            <h2 data-i18n="cards.heading">Cards</h2>
+            <div class="actions">
+              <button id="refreshCards" type="button" data-i18n="cards.refresh">Refresh</button>
+            </div>
+          </div>
+          <form id="cardForm">
+            <label class="field">
+              <span data-i18n="cards.form.name">Name</span>
+              <input
+                id="cardName"
+                name="cardName"
+                type="text"
+                required
+                placeholder="Surprise Event"
+                data-i18n-placeholder="cards.form.namePlaceholder"
+              />
+            </label>
+            <label class="field">
+              <span data-i18n="cards.form.description">Description</span>
+              <input
+                id="cardDescription"
+                name="cardDescription"
+                type="text"
+                required
+                placeholder="Something unexpected happens"
+                data-i18n-placeholder="cards.form.descriptionPlaceholder"
+              />
+            </label>
+            <label class="field">
+              <span data-i18n="cards.form.category">Category (optional)</span>
+              <input
+                id="cardCategory"
+                name="cardCategory"
+                type="text"
+                placeholder="chaos"
+                data-i18n-placeholder="cards.form.categoryPlaceholder"
+              />
+            </label>
+            <button type="submit" data-i18n="cards.form.submit">Create card</button>
+          </form>
+          <ul id="cardsList" class="list"></ul>
+        </article>
+
+        <article class="card" data-admin-only id="decksSection">
+          <div class="card-header">
+            <h2 data-i18n="decks.heading">Decks</h2>
+            <div class="actions">
+              <button id="refreshDecks" type="button" data-i18n="decks.refresh">Refresh</button>
+            </div>
+          </div>
+          <form id="deckForm">
+            <label class="field">
+              <span data-i18n="decks.form.name">Name</span>
+              <input
+                id="deckName"
+                name="deckName"
+                type="text"
+                required
+                placeholder="Starter Deck"
+                data-i18n-placeholder="decks.form.namePlaceholder"
+              />
+            </label>
+            <label class="field">
+              <span data-i18n="decks.form.description">Description (optional)</span>
+              <input
+                id="deckDescription"
+                name="deckDescription"
+                type="text"
+                placeholder="Default cards"
+                data-i18n-placeholder="decks.form.descriptionPlaceholder"
+              />
+            </label>
+            <label class="field">
+              <span data-i18n="decks.form.cardIds">Card IDs (comma separated)</span>
+              <input
+                id="deckCardIds"
+                name="deckCardIds"
+                type="text"
+                placeholder="1,2,3"
+                data-i18n-placeholder="decks.form.cardIdsPlaceholder"
+              />
+            </label>
+            <button type="submit" data-i18n="decks.form.submit">Create deck</button>
+          </form>
+          <ul id="decksList" class="list"></ul>
+        </article>
+      </section>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="status.heading">Status</h2>
+      <pre id="statusArea" class="status"></pre>
+    </section>
+
+    <script src="main.js"></script>
+  </body>
+</html>
