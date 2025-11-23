@@ -241,6 +241,7 @@ const TRANSLATIONS = {
       ready: "Ready. Set your API base URL, register or sign in, or manage data as an admin.",
       loginFailed: "Login failed: {status}",
       registrationSuccess: "Registered as {name}.",
+      loginRequired: "Please sign in to access this page.",
       adminRoleRequired:
         "Admin access required. Provide the ADMIN_TOKEN or sign in as an admin to continue.",
       unableLoadUsers: "Unable to load users: {status}",
@@ -490,6 +491,7 @@ const TRANSLATIONS = {
         "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
       loginFailed: "Помилка входу: {status}",
       registrationSuccess: "Зареєстровано як {name}.",
+      loginRequired: "Увійдіть, щоб отримати доступ до цієї сторінки.",
       adminRoleRequired:
         "Потрібен адмін-доступ. Увійдіть як адміністратор або додайте ADMIN_TOKEN.",
       unableLoadUsers: "Не вдалося завантажити користувачів: {status}",
@@ -557,6 +559,7 @@ let deckCards = [];
 let handCards = [];
 let workspaceCards = [];
 let adminStatus = { isActive: false, isChecking: false };
+let sessionCheckComplete = false;
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -635,6 +638,7 @@ function setLanguage(language) {
 
 function syncNavLinks() {
   const isLoggedIn = Boolean(authToken && currentUser);
+  const canAccessAdmin = hasAdminAccess();
 
   if (navLoginLink) {
     navLoginLink.textContent = "LOGIN";
@@ -647,12 +651,14 @@ function syncNavLinks() {
   }
 
   if (navManagementLink) {
-    navManagementLink.hidden = true;
+    navManagementLink.hidden = !isLoggedIn;
   }
 
   if (navAdminLink) {
-    navAdminLink.hidden = true;
+    navAdminLink.hidden = !canAccessAdmin;
   }
+
+  enforceRestrictedPageAccess();
 }
 
 function log(message, isError = false) {
@@ -706,6 +712,7 @@ function persistAdminToken() {
       localStorage.removeItem(STORAGE_KEYS.adminToken);
     }
     syncAdminUi();
+    syncNavLinks();
   });
 }
 
@@ -713,12 +720,38 @@ function isAdmin() {
   return currentUser?.role === "admin";
 }
 
+function hasAdminAccess() {
+  return Boolean(getAdminToken() || (authToken && isAdmin()));
+}
+
 function requireAdminAccess(showMessage = true) {
-  const allowed = Boolean((authToken && isAdmin()) || getAdminToken());
+  const allowed = hasAdminAccess();
   if (!allowed && showMessage) {
     log(t("messages.adminRoleRequired"), true);
   }
   return allowed;
+}
+
+function redirectToLogin() {
+  window.location.href = "../client-web/index.html";
+}
+
+function enforceRestrictedPageAccess() {
+  if (!sessionCheckComplete) {
+    return true;
+  }
+  const isLoggedIn = Boolean(authToken && currentUser);
+  if (pageName === "management" && !isLoggedIn) {
+    log(t("messages.loginRequired"), true);
+    redirectToLogin();
+    return false;
+  }
+  if (pageName === "admin" && !hasAdminAccess()) {
+    log(t("messages.adminRoleRequired"), true);
+    redirectToLogin();
+    return false;
+  }
+  return true;
 }
 
 function setAuthSession(token, user) {
@@ -1069,6 +1102,8 @@ async function restoreSession() {
       handleAuthFailure();
     }
   }
+  sessionCheckComplete = true;
+  enforceRestrictedPageAccess();
 }
 
 function getGuestCredentials() {
