@@ -71,6 +71,19 @@
             Sign in with an admin account to unlock these controls.
           </p>
         </div>
+        <label class="field">
+          <span data-i18n="admin.tokenLabel">Admin token</span>
+          <input
+            id="adminToken"
+            type="password"
+            autocomplete="off"
+            data-i18n-placeholder="admin.tokenPlaceholder"
+            placeholder="Paste the server ADMIN_TOKEN value"
+          />
+        </label>
+        <p class="hint" data-i18n="admin.tokenHint">
+          Paste the ADMIN_TOKEN from your server configuration to bootstrap admin actions without an admin account.
+        </p>
         <div id="adminTokenStatus" class="pill muted" aria-live="polite"></div>
         <div class="actions">
           <button id="refreshAdminData" type="button" data-i18n="admin.loadData">

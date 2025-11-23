@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   user: "joj-user",
   apiBase: "joj-api-base",
   roomCode: "joj-room-code",
+  adminToken: "joj-admin-token",
 };
 
 const LANGUAGE_STORAGE_KEY = "joj-language";
@@ -43,12 +44,16 @@ const TRANSLATIONS = {
     },
     admin: {
       heading: "Admin access",
-      roleHint: "Sign in with an admin account to unlock these controls.",
+      roleHint: "Sign in with an admin account or provide the ADMIN_TOKEN to unlock these controls.",
       loadData: "Load admin data",
+      tokenLabel: "Admin token",
+      tokenPlaceholder: "Paste the server ADMIN_TOKEN value",
+      tokenHint:
+        "Paste the ADMIN_TOKEN from your server configuration to bootstrap admin actions without an admin account.",
       status: {
-        idle: "Admin role required to load data.",
+        idle: "Admin access required to load data.",
         checking: "Checking admin access...",
-        valid: "Admin session ready.",
+        valid: "Admin session ready via token or role.",
         invalid: "Admin access unavailable.",
       },
     },
@@ -236,7 +241,8 @@ const TRANSLATIONS = {
       ready: "Ready. Set your API base URL, register or sign in, or manage data as an admin.",
       loginFailed: "Login failed: {status}",
       registrationSuccess: "Registered as {name}.",
-      adminRoleRequired: "Admin role required. Sign in as an admin to continue.",
+      adminRoleRequired:
+        "Admin access required. Provide the ADMIN_TOKEN or sign in as an admin to continue.",
       unableLoadUsers: "Unable to load users: {status}",
       unableLoadAdminRooms: "Unable to load rooms for admin: {status}",
       roleUpdated: "Updated role for {name} to {role}.",
@@ -285,12 +291,17 @@ const TRANSLATIONS = {
     },
     admin: {
       heading: "Доступ адміністратора",
-      roleHint: "Увійдіть як адміністратор, щоб увімкнути ці інструменти.",
+      roleHint:
+        "Увійдіть як адміністратор або надайте ADMIN_TOKEN, щоб увімкнути ці інструменти.",
       loadData: "Завантажити адмін-дані",
+      tokenLabel: "Адмін-токен",
+      tokenPlaceholder: "Вставте значення ADMIN_TOKEN із сервера",
+      tokenHint:
+        "Вставте ADMIN_TOKEN із конфігурації сервера, щоб увімкнути адмін-дії без адмін-акаунта.",
       status: {
-        idle: "Потрібна адміністраторська роль для завантаження даних.",
+        idle: "Потрібен адмін-доступ для завантаження даних.",
         checking: "Перевіряємо адмін-доступ...",
-        valid: "Адмін-сесія готова.",
+        valid: "Адмін-сесія готова (токен чи роль).",
         invalid: "Адмін-доступ недоступний.",
       },
     },
@@ -479,7 +490,8 @@ const TRANSLATIONS = {
         "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
       loginFailed: "Помилка входу: {status}",
       registrationSuccess: "Зареєстровано як {name}.",
-      adminRoleRequired: "Потрібна роль адміністратора. Увійдіть як адміністратор.",
+      adminRoleRequired:
+        "Потрібен адмін-доступ. Увійдіть як адміністратор або додайте ADMIN_TOKEN.",
       unableLoadUsers: "Не вдалося завантажити користувачів: {status}",
       unableLoadAdminRooms: "Не вдалося завантажити кімнати для адміністратора: {status}",
       roleUpdated: "Оновлено роль {name} на {role}.",
@@ -512,6 +524,7 @@ const refreshDecksButton = document.getElementById("refreshDecks");
 const refreshUsersButton = document.getElementById("refreshUsers");
 const refreshAdminRoomsButton = document.getElementById("refreshAdminRooms");
 const adminStatusLabel = document.getElementById("adminTokenStatus");
+const adminTokenInput = document.getElementById("adminToken");
 const cardForm = document.getElementById("cardForm");
 const deckForm = document.getElementById("deckForm");
 const deckImportPayload = document.getElementById("deckImportPayload");
@@ -649,12 +662,33 @@ function persistApiBase() {
   });
 }
 
+function getAdminToken() {
+  return adminTokenInput?.value.trim() || "";
+}
+
+function persistAdminToken() {
+  if (!adminTokenInput) return;
+  const savedToken = localStorage.getItem(STORAGE_KEYS.adminToken);
+  if (savedToken) {
+    adminTokenInput.value = savedToken;
+  }
+  adminTokenInput.addEventListener("input", () => {
+    const value = adminTokenInput.value.trim();
+    if (value) {
+      localStorage.setItem(STORAGE_KEYS.adminToken, value);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.adminToken);
+    }
+    syncAdminUi();
+  });
+}
+
 function isAdmin() {
   return currentUser?.role === "admin";
 }
 
 function requireAdminAccess(showMessage = true) {
-  const allowed = Boolean(authToken && isAdmin());
+  const allowed = Boolean((authToken && isAdmin()) || getAdminToken());
   if (!allowed && showMessage) {
     log(t("messages.adminRoleRequired"), true);
   }
@@ -716,14 +750,21 @@ function adminHeaders() {
   if (!requireAdminAccess(false)) {
     throw new Error(t("messages.adminRoleRequired"));
   }
-  return {
+  const headers = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${authToken}`,
   };
+  const adminToken = getAdminToken();
+  if (adminToken) {
+    headers["X-Admin-Token"] = adminToken;
+  }
+  if (authToken && isAdmin()) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+  return headers;
 }
 
 function syncAdminUi() {
-  const adminMode = isAdmin();
+  const adminMode = isAdmin() || Boolean(getAdminToken());
   const adminBusy = adminStatus.isChecking;
   adminOnlySections.forEach((section) => {
     section.hidden = !adminMode;
@@ -1808,6 +1849,7 @@ function wireEvents() {
 }
 
 persistApiBase();
+persistAdminToken();
 setLanguage(currentLanguage);
 wireEvents();
 setUserInfo();
