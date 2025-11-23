@@ -97,7 +97,7 @@ class Repository:
         if not card_ids:
             return
         found_ids = set(
-            cid for (cid,) in self.session.exec(select(Card.id).where(Card.id.in_(card_ids))).all()
+            self.session.exec(select(Card.id).where(Card.id.in_(card_ids))).all()
         )
         missing = [cid for cid in card_ids if cid not in found_ids]
         if missing:
