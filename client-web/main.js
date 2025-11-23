@@ -29,7 +29,8 @@ const TRANSLATIONS = {
       displayNamePlaceholder: "Battle Planner",
       password: "Password",
       passwordPlaceholder: "Enter a password",
-      submit: "Sign in as guest",
+      register: "Register",
+      submit: "Sign in",
       notSignedIn: "Not signed in yet.",
     },
     rooms: {
@@ -157,8 +158,9 @@ const TRANSLATIONS = {
       deletedCard: "Deleted card #{id}.",
       deletedDeck: "Deleted deck #{id}.",
       exportedDeck: "Exported deck #{id}:\n{payload}",
-      ready: "Ready. Set your API base URL, sign in as a guest, or manage decks with the admin token.",
+      ready: "Ready. Set your API base URL, register or sign in, or manage decks with the admin token.",
       loginFailed: "Login failed: {status}",
+      registrationSuccess: "Registered as {name}.",
     },
   },
   uk: {
@@ -184,7 +186,8 @@ const TRANSLATIONS = {
       displayNamePlaceholder: "Стратег",
       password: "Пароль",
       passwordPlaceholder: "Введіть пароль",
-      submit: "Увійти як гість",
+      register: "Зареєструватися",
+      submit: "Увійти",
       notSignedIn: "Ще не увійшли.",
     },
     rooms: {
@@ -313,8 +316,9 @@ const TRANSLATIONS = {
       deletedDeck: "Колоду #{id} видалено.",
       exportedDeck: "Експорт колоди #{id}:\n{payload}",
       ready:
-        "Готово. Задайте базову адресу API, увійдіть як гість або керуйте колодами з адмін-токеном.",
+        "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте колодами з адмін-токеном.",
       loginFailed: "Помилка входу: {status}",
+      registrationSuccess: "Зареєстровано як {name}.",
     },
   },
 };
@@ -324,6 +328,7 @@ let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
 const statusArea = document.getElementById("statusArea");
 const apiBaseInput = document.getElementById("apiBase");
 const guestLoginForm = document.getElementById("guestLoginForm");
+const registerGuestButton = document.getElementById("registerGuest");
 const roomForm = document.getElementById("roomForm");
 const roomsList = document.getElementById("roomsList");
 const refreshRoomsButton = document.getElementById("refreshRooms");
@@ -679,18 +684,23 @@ async function restoreSession() {
   }
 }
 
-async function handleGuestLogin(event) {
-  event.preventDefault();
+function getGuestCredentials() {
   const displayName = document.getElementById("displayName").value.trim();
   const password = loginPasswordInput.value.trim();
   if (!displayName) {
     log(t("messages.displayNameRequired"), true);
-    return;
+    return null;
   }
   if (!password) {
     log(t("messages.passwordRequired"), true);
-    return;
+    return null;
   }
+  return { displayName, password };
+}
+
+async function authenticateGuest(successMessageKey) {
+  const credentials = getGuestCredentials();
+  if (!credentials) return;
 
   try {
     const response = await fetch(apiUrl("/auth/login"), {
@@ -698,8 +708,8 @@ async function handleGuestLogin(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         provider: "guest",
-        display_name: displayName,
-        password,
+        display_name: credentials.displayName,
+        password: credentials.password,
       }),
     });
 
@@ -709,13 +719,23 @@ async function handleGuestLogin(event) {
 
     const data = await response.json();
     setAuthSession(data.access_token, data.user);
-    log(t("messages.loginSuccess", { name: currentUser.display_name }));
+    log(t(successMessageKey, { name: currentUser.display_name }));
     setUserInfo();
     await loadRooms();
     await prepareGameplayArea();
   } catch (error) {
     log(error.message, true);
   }
+}
+
+async function handleGuestLogin(event) {
+  event.preventDefault();
+  await authenticateGuest("messages.loginSuccess");
+}
+
+async function handleGuestRegistration(event) {
+  event.preventDefault();
+  await authenticateGuest("messages.registrationSuccess");
 }
 
 async function loadRooms() {
@@ -1084,6 +1104,7 @@ async function loadAdminData() {
 
 function wireEvents() {
   guestLoginForm.addEventListener("submit", handleGuestLogin);
+  registerGuestButton.addEventListener("click", handleGuestRegistration);
   roomForm.addEventListener("submit", createRoom);
   refreshRoomsButton.addEventListener("click", loadRooms);
   adminTokenInput.addEventListener("input", syncAdminUi);
