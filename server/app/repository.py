@@ -130,7 +130,23 @@ class Repository:
         deck_payload = payload.deck
 
         if new_card_ids:
-            card_ids = new_card_ids
+            card_ids = list(deck_payload.card_ids or [])
+            if card_ids:
+                unique_existing_ids: list[int] = []
+                for cid in card_ids:
+                    if cid not in unique_existing_ids:
+                        unique_existing_ids.append(cid)
+
+                replacement_map = {
+                    old_id: new_id
+                    for old_id, new_id in zip(unique_existing_ids, new_card_ids)
+                }
+                card_ids = [replacement_map.get(cid, cid) for cid in card_ids]
+
+                if len(new_card_ids) > len(unique_existing_ids):
+                    card_ids.extend(new_card_ids[len(unique_existing_ids) :])
+            else:
+                card_ids = new_card_ids
         else:
             card_ids = list(deck_payload.card_ids or [])
             self._validate_cards_exist(card_ids)
