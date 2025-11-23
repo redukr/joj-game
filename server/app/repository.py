@@ -210,7 +210,23 @@ class Repository:
                 player_count = amount
         return player_count, spectator_count
 
+    def _ensure_host_membership(self, room: Room) -> None:
+        if not room.host_user_id:
+            return
+        existing = self.session.get(RoomMembership, (room.code, room.host_user_id))
+        if existing:
+            return
+        membership = RoomMembership(
+            room_code=room.code,
+            user_id=room.host_user_id,
+            role="player",
+            joined_at=room.created_at,
+        )
+        self.session.add(membership)
+        self.session.flush()
+
     def _room_to_read(self, room: Room, current_user_id: str | None = None) -> RoomRead:
+        self._ensure_host_membership(room)
         player_count, spectator_count = self._membership_counts(room.code)
         is_joined = False
         if current_user_id:
@@ -261,6 +277,8 @@ class Repository:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
         if room.status != "active":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not joinable")
+
+        self._ensure_host_membership(room)
 
         existing = self.session.get(RoomMembership, (room_code, user_id))
         if existing:
