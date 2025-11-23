@@ -22,6 +22,7 @@ from app.models import (
     DeckRead,
     LoginRequest,
     Provider,
+    Role,
     Room,
     RoomCreate,
     RoomMembership,
@@ -29,6 +30,7 @@ from app.models import (
     Token,
     User,
     UserRead,
+    UserRoleUpdate,
 )
 
 
@@ -254,6 +256,7 @@ class Repository:
             provider=provider,
             display_name=display_name,
             password_hash=password_hash,
+            role=Role.USER,
         )
         self.session.add(user)
         self.session.flush()
@@ -437,10 +440,8 @@ class Repository:
         else:
             base_query = base_query.where(Room.visibility.in_(["public", "private"]))
         if current_user_id:
-            member_subquery = (
-                select(RoomMembership.room_code)
-                .where(RoomMembership.user_id == current_user_id)
-                .subquery()
+            member_subquery = select(RoomMembership.room_code).where(
+                RoomMembership.user_id == current_user_id
             )
             base_query = base_query.where(
                 or_(Room.visibility == "public", Room.code.in_(member_subquery))
@@ -484,6 +485,67 @@ class Repository:
         self.session.add(membership)
         self.session.flush()
         return self._room_to_read(room, user_id)
+
+    # User admin helpers
+    def list_users(self, limit: int, offset: int) -> List[UserRead]:
+        users = self.session.exec(select(User).offset(offset).limit(limit)).all()
+        return [UserRead.from_orm(user) for user in users]
+
+    def update_user_role(self, user_id: str, payload: UserRoleUpdate) -> UserRead:
+        user = self.session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        user.role = payload.role
+        self.session.add(user)
+        self._revoke_user_tokens(user_id)
+        self.session.flush()
+        return UserRead.from_orm(user)
+
+    def delete_user(self, user_id: str) -> None:
+        user = self.session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        rooms_to_delete = self.session.exec(
+            select(Room.code).where(Room.host_user_id == user_id)
+        ).all()
+
+        self.session.exec(delete(RoomMembership).where(RoomMembership.user_id == user_id))
+        self.session.exec(delete(Token).where(Token.user_id == user_id))
+
+        for (room_code,) in rooms_to_delete:
+            self.delete_room(room_code)
+
+        self.session.delete(user)
+        self.session.flush()
+
+    # Room admin helpers
+    def list_all_rooms(
+        self, limit: int, offset: int, status: str | None = None, sort: str | None = None
+    ) -> List[RoomRead]:
+        base_query = select(Room)
+        if status:
+            base_query = base_query.where(Room.status == status)
+
+        sort = sort or "-created_at"
+        sort_field = sort[1:] if sort.startswith("-") else sort
+        if not hasattr(Room, sort_field):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sort field")
+        if sort.startswith("-"):
+            base_query = base_query.order_by(getattr(Room, sort_field).desc())
+        else:
+            base_query = base_query.order_by(getattr(Room, sort_field).asc())
+
+        rooms = self.session.exec(base_query.offset(offset).limit(limit)).all()
+        return [self._room_to_read(room, None) for room in rooms]
+
+    def delete_room(self, room_code: str) -> None:
+        room = self.session.get(Room, room_code)
+        if not room:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+        self.session.exec(delete(RoomMembership).where(RoomMembership.room_code == room_code))
+        self.session.delete(room)
+        self.session.flush()
 
 
 def paginate(

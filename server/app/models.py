@@ -7,6 +7,11 @@ from sqlalchemy.dialects.sqlite import JSON
 from sqlmodel import Field, SQLModel
 
 
+class Role(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+
+
 class Provider(str, Enum):
     APPLE = "apple"
     GOOGLE = "google"
@@ -74,15 +79,21 @@ class User(SQLModel, table=True):
     provider: Provider
     display_name: str
     password_hash: str | None = Field(default=None, description="Hashed password for local auth")
+    role: Role = Field(default=Role.USER)
 
 
 class UserRead(SQLModel):
     id: str
     provider: Provider
     display_name: str
+    role: Role
 
     class Config:
         orm_mode = True
+
+
+class UserRoleUpdate(SQLModel):
+    role: Role
 
 
 class Token(SQLModel, table=True):

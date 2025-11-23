@@ -45,9 +45,9 @@
           <span class="chip-label" data-i18n="session.roomLabel">Room</span>
           <span class="chip-value" data-i18n="session.roomNone">Not joined</span>
         </div>
-        <div class="session-chip" id="sessionAdminChip">
-          <span class="chip-label" data-i18n="session.adminLabel">Admin</span>
-          <span class="chip-value" data-i18n="session.adminMissing">Token missing</span>
+        <div class="session-chip" id="sessionRoleChip">
+          <span class="chip-label" data-i18n="session.roleLabel">Role</span>
+          <span class="chip-value" data-i18n="session.roleGuest">Guest</span>
         </div>
       </div>
     </header>
@@ -67,35 +67,45 @@
       <div class="card">
         <div class="card-header">
           <h2 data-i18n="admin.heading">Admin access</h2>
-          <p class="muted">
-            Administrative controls to seed, inspect, and maintain core game
-            assets.
+          <p class="muted" data-i18n="admin.roleHint">
+            Sign in with an admin account to unlock these controls.
           </p>
         </div>
-        <label class="field">
-          <span data-i18n="admin.token">Admin token</span>
-          <input
-            id="adminToken"
-            name="adminToken"
-            type="password"
-            autocomplete="off"
-            placeholder="Paste the server ADMIN_TOKEN value"
-            data-i18n-placeholder="admin.tokenPlaceholder"
-          />
-        </label>
         <div id="adminTokenStatus" class="pill muted" aria-live="polite"></div>
-        <p class="hint" data-i18n="admin.hint1">
-          Needed for the /admin API. Stored only in this page during your session.
-        </p>
-        <p class="hint" data-i18n="admin.hint2">Admin tools appear once a token is provided.</p>
         <div class="actions">
           <button id="refreshAdminData" type="button" data-i18n="admin.loadData">
-            Load cards & decks
+            Load admin data
           </button>
         </div>
       </div>
 
       <section class="grid">
+        <article class="card" data-admin-only id="usersSection">
+          <div class="card-header">
+            <h2 data-i18n="users.heading">Users</h2>
+            <div class="actions">
+              <button id="refreshUsers" type="button" data-i18n="users.refresh">Refresh</button>
+            </div>
+          </div>
+          <p class="muted" data-i18n="users.hint">
+            Review users, assign roles, or remove accounts.
+          </p>
+          <ul id="usersList" class="list"></ul>
+        </article>
+
+        <article class="card" data-admin-only id="roomsAdminSection">
+          <div class="card-header">
+            <h2 data-i18n="rooms.adminHeading">Rooms</h2>
+            <div class="actions">
+              <button id="refreshAdminRooms" type="button" data-i18n="rooms.refresh">Refresh</button>
+            </div>
+          </div>
+          <p class="muted" data-i18n="rooms.adminHint">
+            Inspect active rooms and remove stale ones.
+          </p>
+          <ul id="adminRoomsList" class="list"></ul>
+        </article>
+
         <article class="card" data-admin-only id="cardsSection">
           <div class="card-header">
             <h2 data-i18n="cards.heading">Cards</h2>

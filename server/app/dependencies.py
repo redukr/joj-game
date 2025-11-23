@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.config import get_settings
 from app.db import get_session
 from app.repository import Repository
+from app.models import Role, UserRead
 
 
 def get_settings_dep():
@@ -20,10 +21,15 @@ def get_repository(session=Depends(get_session)) -> Repository:
 
 
 def require_admin(
-    x_admin_token: str = Header(..., alias="X-Admin-Token"), settings=Depends(get_settings_dep)
+    x_admin_token: str | None = Header(None, alias="X-Admin-Token"),
+    settings=Depends(get_settings_dep),
+    current_user: UserRead | None = Depends(get_optional_user),
 ):
-    if x_admin_token != settings.admin_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin token")
+    if x_admin_token and x_admin_token == settings.admin_token:
+        return
+    if current_user and current_user.role == Role.ADMIN:
+        return
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin access required")
 
 
 _logger = logging.getLogger(__name__)
