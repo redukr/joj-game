@@ -113,6 +113,30 @@ input:focus {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
+select {
+  padding: 0.65rem 2.5rem 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 1rem;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236366f1' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  appearance: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.list .field select {
+  min-width: 140px;
+  max-width: 220px;
+}
+
 button {
   background: linear-gradient(135deg, #4f46e5, #6366f1);
   color: white;
@@ -197,6 +221,37 @@ button.ghost {
   border-color: #f97316;
   background: #fff7ed;
   color: #9a3412;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal .modal-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  min-width: 300px;
+  max-width: 460px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .banner-actions {

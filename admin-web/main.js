@@ -7,7 +7,8 @@ const STORAGE_KEYS = {
 };
 
 const LANGUAGE_STORAGE_KEY = "joj-language";
-const ADMIN_TOKEN_IDLE_MS = 15 * 60 * 1000;
+const ADMIN_TOKEN_IDLE_MS = 2 * 60 * 60 * 1000;
+const ADMIN_IDLE_CHECK_MS = 60 * 1000;
 
 const TRANSLATIONS = {
   en: {
@@ -241,6 +242,7 @@ const TRANSLATIONS = {
       deleteDeckFailed: "Delete deck failed: {status} {detail}",
       exportDeckFailed: "Export failed: {status} {detail}",
       cardFieldsRequired: "Card name and description are required.",
+      cardRangeInvalid: "Card effects must stay between -10 and +10.",
       cardCreated: 'Created card "{name}" (#{id}).',
       deckNameRequired: "Deck name is required.",
       deckCreated: 'Created deck "{name}" (#{id}).',
@@ -253,7 +255,12 @@ const TRANSLATIONS = {
       deckImported: 'Imported deck "{name}" (#{id}).',
       deckImportUpdated: 'Replaced deck "{name}" (#{id}) with imported data.',
       importDeckInvalid: "Provide valid deck JSON to import.",
+      importDeckInvalidStructure:
+        "Deck JSON must include a deck name, numeric card IDs, and valid card shapes.",
       importDeckFailed: "Import failed: {status} {detail}",
+      confirmTitle: "Confirm action",
+      confirmAction: "Confirm",
+      cancelAction: "Cancel",
       ready: "Ready. Set your API base URL, register or sign in, or manage data as an admin.",
       loginFailed: "Login failed: {status}",
       registrationSuccess: "Registered as {name}.",
@@ -510,22 +517,25 @@ const TRANSLATIONS = {
       deleteDeckFailed: "Не вдалося видалити колоду: {status} {detail}",
       exportDeckFailed: "Не вдалося експортувати: {status} {detail}",
       cardFieldsRequired: "Потрібно вказати назву та опис карти.",
+      cardRangeInvalid: "Значення ефектів мають бути між -10 та +10.",
       cardCreated: 'Карту "{name}" (#{id}) створено.',
       deckNameRequired: "Потрібно вказати назву колоди.",
       deckCreated: 'Колоду "{name}" (#{id}) створено.',
+      deckUpdated: 'Колоду "{name}" (#{id}) оновлено.',
       deleteCardConfirm: "Видалити карту #{id}?",
       deleteDeckConfirm: "Видалити колоду #{id}?",
       deletedCard: "Карту #{id} видалено.",
       deletedDeck: "Колоду #{id} видалено.",
-        exportedDeck: "Експорт колоди #{id}:\n{payload}",
-        deckImported: 'Імпортовано колоду "{name}" (#{id}).',
-        deckImportUpdated: 'Колоду "{name}" (#{id}) перезаписано імпортом.',
-        importDeckInvalid: "Додайте коректний JSON для імпорту.",
-        importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
-        updateDeckFailed: "Не вдалося оновити колоду: {status} {detail}",
-        deckUpdated: 'Колоду "{name}" (#{id}) оновлено.',
-        ready:
-          "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
+      exportedDeck: "Експорт колоди #{id}:\n{payload}",
+      deckImported: 'Імпортовано колоду "{name}" (#{id}).',
+      deckImportUpdated: 'Колоду "{name}" (#{id}) перезаписано імпортом.',
+      importDeckInvalid: "Додайте коректний JSON для імпорту.",
+      importDeckInvalidStructure:
+        "JSON має містити назву колоди, числові ID карток та валідні картки.",
+      importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
+      updateDeckFailed: "Не вдалося оновити колоду: {status} {detail}",
+      ready:
+        "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
       loginFailed: "Помилка входу: {status}",
       registrationSuccess: "Зареєстровано як {name}.",
       loginRequired: "Увійдіть, щоб отримати доступ до цієї сторінки.",
@@ -546,6 +556,9 @@ const TRANSLATIONS = {
         "Потрібен адмін-доступ. Введіть ADMIN_TOKEN або увійдіть як адміністратор.",
       bannerLoginCta: "Перейти до входу",
       bannerDismiss: "Сховати",
+      confirmTitle: "Підтвердьте дію",
+      confirmAction: "Підтвердити",
+      cancelAction: "Скасувати",
       adminTokenCleared: "Адмін-токен очищено.",
       adminTokenExpired: "Адмін-токен очищено через бездіяльність.",
     },
@@ -608,6 +621,10 @@ const languageSelector = document.getElementById("languageSelector");
 const loginPasswordInput = document.getElementById("loginPassword");
 const roleChipValue = document.querySelector("#sessionRoleChip .chip-value");
 const roleChipLabel = document.querySelector("#sessionRoleChip .chip-label");
+const confirmDialog = document.getElementById("confirmDialog");
+const confirmDialogMessage = document.getElementById("confirmMessage");
+const confirmDialogAccept = document.getElementById("confirmAccept");
+const confirmDialogCancel = document.getElementById("confirmCancel");
 
 let authToken = null;
 let currentUser = null;
@@ -618,6 +635,7 @@ let deckEditId = null;
 let handCards = [];
 let workspaceCards = [];
 let adminTokenIdleTimer = null;
+let adminLastActivityAt = null;
 let adminStatus = { isActive: false, isChecking: false };
 let sessionCheckComplete = false;
 
@@ -761,6 +779,38 @@ function hideAccessBanner() {
   accessBanner.hidden = true;
 }
 
+let confirmDialogResolver = null;
+
+function closeConfirmDialog(result = false) {
+  if (!confirmDialog) return;
+  confirmDialog.classList.remove("open");
+  confirmDialog.hidden = true;
+  if (confirmDialogResolver) {
+    confirmDialogResolver(result);
+    confirmDialogResolver = null;
+  }
+}
+
+function confirmAction(message) {
+  if (
+    !confirmDialog ||
+    !confirmDialogMessage ||
+    !confirmDialogAccept ||
+    !confirmDialogCancel
+  ) {
+    return Promise.resolve(window.confirm(message));
+  }
+
+  confirmDialogMessage.textContent = message;
+  confirmDialog.hidden = false;
+  confirmDialog.classList.add("open");
+
+  return new Promise((resolve) => {
+    confirmDialogResolver = resolve;
+    confirmDialogAccept.focus();
+  });
+}
+
 function apiUrl(path) {
   if (!apiBaseInput) {
     return path;
@@ -809,18 +859,41 @@ function hasAdminAccess() {
 
 function clearAdminTokenTimer() {
   if (adminTokenIdleTimer) {
-    clearTimeout(adminTokenIdleTimer);
+    clearInterval(adminTokenIdleTimer);
     adminTokenIdleTimer = null;
   }
 }
 
 function resetAdminTokenIdleTimer() {
-  clearAdminTokenTimer();
   const token = getAdminToken();
-  if (!token) return;
-  adminTokenIdleTimer = setTimeout(() => {
-    clearAdminToken("messages.adminTokenExpired");
-  }, ADMIN_TOKEN_IDLE_MS);
+  if (!token) {
+    clearAdminTokenTimer();
+    adminLastActivityAt = null;
+    return;
+  }
+
+  adminLastActivityAt = Date.now();
+
+  if (!adminTokenIdleTimer) {
+    adminTokenIdleTimer = setInterval(() => {
+      const storedToken = getAdminToken();
+      if (!storedToken) {
+        clearAdminTokenTimer();
+        adminLastActivityAt = null;
+        return;
+      }
+
+      if (!adminLastActivityAt) {
+        adminLastActivityAt = Date.now();
+        return;
+      }
+
+      const idleDuration = Date.now() - adminLastActivityAt;
+      if (idleDuration >= ADMIN_TOKEN_IDLE_MS) {
+        clearAdminToken("messages.adminTokenExpired");
+      }
+    }, ADMIN_IDLE_CHECK_MS);
+  }
 }
 
 function clearAdminToken(messageKey = null) {
@@ -842,6 +915,7 @@ function setAdminToken(value, messageKey = null) {
   } else {
     sessionStorage.removeItem(STORAGE_KEYS.adminToken);
     clearAdminTokenTimer();
+    adminLastActivityAt = null;
   }
   syncAdminUi();
   syncNavLinks();
@@ -935,7 +1009,8 @@ function requireRoomMembership(showMessage = true) {
 
 function adminHeaders() {
   if (!requireAdminAccess(false)) {
-    throw new Error(t("messages.adminRoleRequired"));
+    setFieldError(adminTokenError, t("messages.adminRoleRequired"));
+    return null;
   }
   const headers = {
     "Content-Type": "application/json",
@@ -1656,8 +1731,10 @@ async function loadCards() {
   if (!cardsList) return;
   if (!requireAdminAccess()) return;
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl("/admin/cards"), {
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers,
     });
     if (!response.ok) {
       if (response.status === 401) {
@@ -1677,8 +1754,10 @@ async function loadDecks() {
   if (!decksList) return;
   if (!requireAdminAccess()) return;
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl("/admin/decks"), {
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers,
     });
     if (!response.ok) {
       if (response.status === 401) {
@@ -1748,8 +1827,10 @@ async function loadUsers() {
   if (!usersList) return;
   if (!requireAdminAccess()) return;
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl("/admin/users"), {
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers,
     });
     if (!response.ok) {
       if (response.status === 401) {
@@ -1766,9 +1847,11 @@ async function loadUsers() {
 
 async function updateUserRole(userId, role) {
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl(`/admin/users/${userId}/role`), {
       method: "PATCH",
-      headers: adminHeaders(),
+      headers,
       body: JSON.stringify({ role }),
     });
     if (!response.ok) {
@@ -1789,11 +1872,17 @@ async function updateUserRole(userId, role) {
 }
 
 async function deleteUserAccount(user) {
-  if (!confirm(t("messages.deleteUserConfirm", { name: user.display_name }))) return;
   try {
+    const confirmed = await confirmAction(
+      t("messages.deleteUserConfirm", { name: user.display_name })
+    );
+    if (!confirmed) return;
+
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl(`/admin/users/${user.id}`), {
       method: "DELETE",
-      headers: adminHeaders(),
+      headers,
     });
     if (!response.ok) {
       const errText = await response.text();
@@ -1850,8 +1939,10 @@ async function loadAdminRooms() {
   if (!adminRoomsList) return;
   if (!requireAdminAccess()) return;
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl("/admin/rooms"), {
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers,
     });
     if (!response.ok) {
       if (response.status === 401) {
@@ -1869,11 +1960,16 @@ async function loadAdminRooms() {
 }
 
 async function deleteAdminRoom(roomCode) {
-  if (!confirm(t("messages.deleteRoomConfirm", { code: roomCode }))) return;
   try {
+    const confirmed = await confirmAction(
+      t("messages.deleteRoomConfirm", { code: roomCode })
+    );
+    if (!confirmed) return;
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl(`/admin/rooms/${roomCode}`), {
       method: "DELETE",
-      headers: adminHeaders(),
+      headers,
     });
     if (!response.ok) {
       const errText = await response.text();
@@ -1903,7 +1999,8 @@ async function createCard(event) {
       `card${key.charAt(0).toUpperCase()}${key.slice(1)}`
     );
     const value = Number.parseInt(input?.value, 10);
-    resourcePayload[key] = Number.isNaN(value) ? 0 : value;
+    const normalized = Number.isNaN(value) ? 0 : value;
+    resourcePayload[key] = normalized;
   });
   if (!name || !description) {
     const message = t("messages.cardFieldsRequired");
@@ -1912,10 +2009,20 @@ async function createCard(event) {
     return;
   }
 
+  const invalidResource = validateResourceBounds(resourcePayload);
+  if (invalidResource) {
+    const message = t("messages.cardRangeInvalid");
+    setFieldError(cardFormError, message);
+    log(message, true);
+    return;
+  }
+
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl("/admin/cards"), {
       method: "POST",
-      headers: adminHeaders(),
+      headers,
       body: JSON.stringify({
         name,
         description,
@@ -1952,6 +2059,61 @@ function parseCardIds(input) {
     .filter((num) => !Number.isNaN(num));
 }
 
+function validateResourceBounds(resourcePayload) {
+  const invalidKey = RESOURCE_KEYS.find((key) => {
+    const value = Number.parseInt(resourcePayload[key] ?? 0, 10);
+    return !Number.isNaN(value) && (value < -10 || value > 10);
+  });
+  return invalidKey || null;
+}
+
+function validateCardShape(card) {
+  if (!card || typeof card !== "object") {
+    return "messages.importDeckInvalid";
+  }
+  if (!card.name || !card.description) {
+    return "messages.cardFieldsRequired";
+  }
+  const invalidKey = validateResourceBounds(card);
+  if (invalidKey) {
+    return "messages.cardRangeInvalid";
+  }
+  return null;
+}
+
+function validateDeckImportPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return "messages.importDeckInvalid";
+  }
+
+  const { deck, cards } = payload;
+  if (!deck || typeof deck !== "object" || !deck.name) {
+    return "messages.importDeckInvalidStructure";
+  }
+  if (deck.card_ids && !Array.isArray(deck.card_ids)) {
+    return "messages.importDeckInvalidStructure";
+  }
+
+  const cardIdInvalid = (deck.card_ids || []).find(
+    (id) => Number.isNaN(Number.parseInt(id, 10))
+  );
+  if (cardIdInvalid !== undefined) {
+    return "messages.importDeckInvalidStructure";
+  }
+
+  if (cards) {
+    if (!Array.isArray(cards)) {
+      return "messages.importDeckInvalidStructure";
+    }
+    const cardError = cards.map((card) => validateCardShape(card)).find(Boolean);
+    if (cardError) {
+      return cardError;
+    }
+  }
+
+  return null;
+}
+
 async function submitDeck(event) {
   event.preventDefault();
   setFieldError(deckFormError, "");
@@ -1971,9 +2133,11 @@ async function submitDeck(event) {
   const method = isEdit ? "PUT" : "POST";
 
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl(endpoint), {
       method,
-      headers: adminHeaders(),
+      headers,
       body: JSON.stringify({ name, description: description || null, card_ids }),
     });
 
@@ -2009,11 +2173,16 @@ async function submitDeck(event) {
 }
 
 async function deleteCard(cardId) {
-  if (!confirm(t("messages.deleteCardConfirm", { id: cardId }))) return;
+  const confirmed = await confirmAction(
+    t("messages.deleteCardConfirm", { id: cardId })
+  );
+  if (!confirmed) return;
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl(`/admin/cards/${cardId}`), {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers,
     });
     if (!response.ok) {
       const errText = await response.text();
@@ -2032,11 +2201,16 @@ async function deleteCard(cardId) {
 }
 
 async function deleteDeck(deckId) {
-  if (!confirm(t("messages.deleteDeckConfirm", { id: deckId }))) return;
+  const confirmed = await confirmAction(
+    t("messages.deleteDeckConfirm", { id: deckId })
+  );
+  if (!confirmed) return;
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl(`/admin/decks/${deckId}`), {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers,
     });
     if (!response.ok) {
       const errText = await response.text();
@@ -2059,8 +2233,10 @@ async function deleteDeck(deckId) {
 
 async function exportDeck(deckId) {
   try {
+    const headers = adminHeaders();
+    if (!headers) return;
     const response = await fetch(apiUrl(`/admin/decks/${deckId}/export`), {
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers,
     });
     if (!response.ok) {
       const errText = await response.text();
@@ -2094,19 +2270,52 @@ async function importDeck() {
   try {
     payload = JSON.parse(raw);
   } catch (error) {
-    log(t("messages.importDeckInvalid"), true);
+    const message = t("messages.importDeckInvalid");
+    setFieldError(deckImportError, message);
+    log(message, true);
     return;
   }
 
   try {
+    const validationErrorKey = validateDeckImportPayload(payload);
+    if (validationErrorKey) {
+      const message = t(validationErrorKey);
+      setFieldError(deckImportError, message);
+      log(message, true);
+      return;
+    }
+
     const targetId = deckImportTarget?.value || "";
     const endpoint = targetId
       ? `/admin/decks/${targetId}/import`
       : "/admin/decks/import";
+    const headers = adminHeaders();
+    if (!headers) return;
+
+    const normalizedPayload = {
+      ...payload,
+      deck: {
+        ...payload.deck,
+        card_ids: (payload.deck.card_ids || []).map((id) =>
+          Number.parseInt(id, 10)
+        ),
+      },
+    };
+
+    if (payload.cards) {
+      normalizedPayload.cards = payload.cards.map((card) => {
+        const normalizedCard = { ...card };
+        RESOURCE_KEYS.forEach((key) => {
+          normalizedCard[key] = Number.parseInt(card[key] ?? 0, 10) || 0;
+        });
+        return normalizedCard;
+      });
+    }
+
     const response = await fetch(apiUrl(endpoint), {
       method: "POST",
-      headers: adminHeaders(),
-      body: JSON.stringify(payload),
+      headers,
+      body: JSON.stringify(normalizedPayload),
     });
     if (!response.ok) {
       const errText = await response.text();
@@ -2197,6 +2406,23 @@ function wireEvents() {
     clearAdminTokenButton.addEventListener("click", () =>
       clearAdminToken("messages.adminTokenCleared")
     );
+  if (confirmDialogCancel)
+    confirmDialogCancel.addEventListener("click", () => closeConfirmDialog(false));
+  if (confirmDialogAccept)
+    confirmDialogAccept.addEventListener("click", () => closeConfirmDialog(true));
+  if (confirmDialog)
+    confirmDialog.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeConfirmDialog(false);
+      }
+    });
+  if (confirmDialog)
+    confirmDialog.addEventListener("click", (event) => {
+      if (event.target === confirmDialog) {
+        closeConfirmDialog(false);
+      }
+    });
   ["pointerdown", "keydown", "mousemove"].forEach((eventName) => {
     document.addEventListener(eventName, resetAdminTokenIdleTimer, { passive: true });
   });

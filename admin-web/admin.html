@@ -337,6 +337,33 @@
       ></pre>
     </section>
 
+    <div
+      id="confirmDialog"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirmTitle"
+      hidden
+    >
+      <div class="modal-content">
+        <h3 id="confirmTitle" data-i18n="messages.confirmTitle">Confirm action</h3>
+        <p id="confirmMessage"></p>
+        <div class="modal-actions">
+          <button
+            id="confirmCancel"
+            type="button"
+            class="ghost"
+            data-i18n="messages.cancelAction"
+          >
+            Cancel
+          </button>
+          <button id="confirmAccept" type="button" data-i18n="messages.confirmAction">
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="main.js"></script>
   </body>
 </html>
