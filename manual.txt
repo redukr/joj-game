@@ -9,8 +9,7 @@ Server setup and launch
    source .venv/bin/activate
 2) Install backend dependencies:
    pip install -r requirements.txt
-3) (Optional) Configure environment values such as an admin token and allowed OAuth providers by creating a .env file:
-   echo "ADMIN_TOKEN=supersecret" > .env
+3) (Optional) Configure environment values such as allowed OAuth providers by creating a .env file:
    echo "ALLOWED_OAUTH_PROVIDERS=apple,google,guest" >> .env
 4) Start the FastAPI server in development mode. The API allows requests from the locally served web client (http://localhost:8001) and admin console (http://localhost:8002):
    uvicorn app.main:app --reload
