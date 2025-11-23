@@ -1,4 +1,3 @@
-import hashlib
 import secrets
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
@@ -8,7 +7,7 @@ from fastapi import HTTPException, status
 from jose import jwt
 from jose.exceptions import JWTError
 from sqlalchemy import func, or_
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, delete, select, update
 from passlib.context import CryptContext
 
 from app.config import get_settings
@@ -23,6 +22,7 @@ from app.models import (
     DeckRead,
     LoginRequest,
     Provider,
+    Role,
     Room,
     RoomCreate,
     RoomMembership,
@@ -30,6 +30,7 @@ from app.models import (
     Token,
     User,
     UserRead,
+    UserRoleUpdate,
 )
 
 
@@ -38,10 +39,26 @@ class Repository:
         self.session = session
         self.settings = get_settings()
         self._jwks_cache: dict[str, dict] = {}
-        self._pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self._pwd_context = CryptContext(
+            schemes=["bcrypt_sha256", "bcrypt", "scrypt"], deprecated="auto"
+        )
 
     # Card helpers
+    def _ensure_card_unique(self, name: str, category: str | None, existing_id: int | None = None) -> None:
+        query = select(Card).where(Card.name == name)
+        if category is None:
+            query = query.where(Card.category.is_(None))
+        else:
+            query = query.where(Card.category == category)
+        existing = self.session.exec(query).first()
+        if existing and existing.id != existing_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Card with the same name and category already exists",
+            )
+
     def add_card(self, payload: CardBase) -> CardRead:
+        self._ensure_card_unique(payload.name, payload.category)
         card = Card.from_orm(payload)
         self.session.add(card)
         self.session.flush()
@@ -52,6 +69,7 @@ class Repository:
         card = self.session.get(Card, card_id)
         if not card:
             raise HTTPException(status_code=404, detail="Card not found")
+        self._ensure_card_unique(payload.name, payload.category, existing_id=card.id)
         for field, value in payload.dict().items():
             setattr(card, field, value)
         self.session.add(card)
@@ -78,9 +96,13 @@ class Repository:
     def _validate_cards_exist(self, card_ids: List[int]) -> None:
         if not card_ids:
             return
-        found_ids = set(
-            cid for (cid,) in self.session.exec(select(Card.id).where(Card.id.in_(card_ids))).all()
-        )
+        raw_results = self.session.exec(
+            select(Card.id).where(Card.id.in_(card_ids))
+        ).all()
+        found_ids = {
+            row[0] if isinstance(row, tuple) else row
+            for row in raw_results
+        }
         missing = [cid for cid in card_ids if cid not in found_ids]
         if missing:
             raise HTTPException(status_code=400, detail=f"Cards do not exist: {missing}")
@@ -128,6 +150,34 @@ class Repository:
         }
 
     def import_deck(self, payload: DeckImport) -> DeckRead:
+        card_ids = self._prepare_import_card_ids(payload)
+
+        deck = Deck(
+            name=payload.deck.name,
+            description=payload.deck.description,
+            card_ids=card_ids,
+        )
+        self.session.add(deck)
+        self.session.flush()
+        self.session.refresh(deck)
+        return DeckRead.from_orm(deck)
+
+    def import_deck_into_existing(self, deck_id: int, payload: DeckImport) -> DeckRead:
+        deck = self.session.get(Deck, deck_id)
+        if not deck:
+            raise HTTPException(status_code=404, detail="Deck not found")
+
+        card_ids = self._prepare_import_card_ids(payload)
+
+        deck.name = payload.deck.name
+        deck.description = payload.deck.description
+        deck.card_ids = card_ids
+        self.session.add(deck)
+        self.session.flush()
+        self.session.refresh(deck)
+        return DeckRead.from_orm(deck)
+
+    def _prepare_import_card_ids(self, payload: DeckImport) -> list[int]:
         new_card_ids: list[int] = []
         for card_payload in payload.cards:
             card = Card.from_orm(card_payload)
@@ -160,15 +210,7 @@ class Repository:
             card_ids = list(deck_payload.card_ids or [])
             self._validate_cards_exist(card_ids)
 
-        deck = Deck(
-            name=deck_payload.name,
-            description=deck_payload.description,
-            card_ids=card_ids,
-        )
-        self.session.add(deck)
-        self.session.flush()
-        self.session.refresh(deck)
-        return DeckRead.from_orm(deck)
+        return card_ids
 
     # Auth helpers
     def _hash_password(self, password: str) -> str:
@@ -177,11 +219,7 @@ class Repository:
     def _verify_password(self, password: str, password_hash: str | None) -> bool:
         if not password_hash:
             return False
-        if self._pwd_context.verify(password, password_hash):
-            return True
-        # Legacy SHA256 fallback for existing guest accounts created before bcrypt rollout
-        legacy_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
-        return legacy_hash == password_hash
+        return self._pwd_context.verify(password, password_hash)
 
     def _get_provider_config(self, provider: Provider) -> tuple[str, str]:
         if provider == Provider.GOOGLE:
@@ -202,7 +240,12 @@ class Repository:
 
     def _validate_oauth_token(self, provider: Provider, token: str) -> dict:
         issuer, jwks_url = self._get_provider_config(provider)
-        audience = self.settings.oauth_audience or None
+        audience = self.settings.oauth_audience
+        if not audience:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="OAuth audience must be configured",
+            )
         jwks = self._fetch_jwks(jwks_url)
         try:
             header = jwt.get_unverified_header(token)
@@ -221,11 +264,8 @@ class Repository:
                 "key": key,
                 "algorithms": [header.get("alg", "RS256")],
                 "issuer": issuer,
+                "audience": audience,
             }
-            if audience:
-                decode_kwargs["audience"] = audience
-            else:
-                decode_kwargs["options"] = {"verify_aud": False}
             claims = jwt.decode(**decode_kwargs)
         except JWTError:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OAuth token")
@@ -240,6 +280,7 @@ class Repository:
             provider=provider,
             display_name=display_name,
             password_hash=password_hash,
+            role=Role.USER.value,
         )
         self.session.add(user)
         self.session.flush()
@@ -255,14 +296,28 @@ class Repository:
 
     def _issue_token(self, user_id: str) -> str:
         token_value = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(hours=12)
+        expires_at = datetime.utcnow() + timedelta(minutes=self.settings.access_token_ttl_minutes)
         token = Token(token=token_value, user_id=user_id, expires_at=expires_at)
         self.session.add(token)
         self.session.flush()
         return token_value
 
     def _revoke_user_tokens(self, user_id: str) -> None:
-        self.session.exec(delete(Token).where(Token.user_id == user_id))
+        self.session.exec(
+            update(Token)
+            .where(Token.user_id == user_id, Token.revoked_at.is_(None))
+            .values(revoked_at=datetime.utcnow())
+        )
+
+    def revoke_token(self, token_value: str) -> None:
+        token = self.session.get(Token, token_value)
+        if not token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+        if token.revoked_at is None:
+            token.revoked_at = datetime.utcnow()
+            self.session.add(token)
+            self.session.flush()
 
     def _cleanup_expired_tokens(self) -> None:
         now = datetime.utcnow()
@@ -311,6 +366,8 @@ class Repository:
         token_row = self.session.get(Token, token)
         if not token_row:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        if token_row.revoked_at is not None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
         if token_row.expires_at and token_row.expires_at < datetime.utcnow():
             self.session.delete(token_row)
             self.session.flush()
@@ -319,6 +376,55 @@ class Repository:
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token owner")
         return UserRead.from_orm(user)
+
+    def change_password(self, user_id: str, current_password: str, new_password: str) -> AuthResponse:
+        user = self.session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if user.provider != Provider.GUEST:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password changes are only supported for guest accounts",
+            )
+        if not self._verify_password(current_password, user.password_hash or ""):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Current password is incorrect",
+            )
+
+        user.password_hash = self._hash_password(new_password)
+        self.session.add(user)
+        self._revoke_user_tokens(user_id)
+        token = self._issue_token(user_id)
+        return AuthResponse(access_token=token, user=UserRead.from_orm(user))
+
+    def ensure_admin_user(self, username: str, password: str) -> None:
+        existing_user = self._get_user_by_display_name(Provider.GUEST, username)
+        desired_hash = self._hash_password(password)
+
+        if existing_user:
+            needs_update = False
+            if existing_user.role != Role.ADMIN.value:
+                existing_user.role = Role.ADMIN.value
+                needs_update = True
+            if not self._verify_password(password, existing_user.password_hash or ""):
+                existing_user.password_hash = desired_hash
+                needs_update = True
+            if needs_update:
+                self._revoke_user_tokens(existing_user.id)
+                self.session.add(existing_user)
+                self.session.flush()
+            return
+
+        user = User(
+            id=username,
+            provider=Provider.GUEST,
+            display_name=username,
+            password_hash=desired_hash,
+            role=Role.ADMIN.value,
+        )
+        self.session.add(user)
+        self.session.flush()
 
     # Room helpers
     def _generate_unique_code(self) -> str:
@@ -400,19 +506,41 @@ class Repository:
         self.session.flush()
         return self._room_to_read(room, host_user_id)
 
-    def list_rooms(self, limit: int, offset: int, current_user_id: str | None = None) -> List[RoomRead]:
-        base_query = select(Room).where(Room.status == "active")
+    def list_rooms(
+        self,
+        limit: int,
+        offset: int,
+        current_user_id: str | None = None,
+        visibility: str | None = None,
+        status: str | None = None,
+        sort: str | None = None,
+    ) -> List[RoomRead]:
+        base_query = select(Room)
+        if status:
+            base_query = base_query.where(Room.status == status)
+        if visibility:
+            base_query = base_query.where(Room.visibility == visibility)
+        else:
+            base_query = base_query.where(Room.visibility.in_(["public", "private"]))
         if current_user_id:
-            member_subquery = (
-                select(RoomMembership.room_code)
-                .where(RoomMembership.user_id == current_user_id)
-                .subquery()
+            member_subquery = select(RoomMembership.room_code).where(
+                RoomMembership.user_id == current_user_id
             )
             base_query = base_query.where(
                 or_(Room.visibility == "public", Room.code.in_(member_subquery))
             )
         else:
             base_query = base_query.where(Room.visibility == "public")
+
+        sort = sort or "-created_at"
+        sort_field = sort[1:] if sort.startswith("-") else sort
+        if not hasattr(Room, sort_field):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sort field")
+        if sort.startswith("-"):
+            base_query = base_query.order_by(getattr(Room, sort_field).desc())
+        else:
+            base_query = base_query.order_by(getattr(Room, sort_field).asc())
+
         rooms = self.session.exec(base_query.offset(offset).limit(limit)).all()
         return [self._room_to_read(room, current_user_id) for room in rooms]
 
@@ -441,9 +569,73 @@ class Repository:
         self.session.flush()
         return self._room_to_read(room, user_id)
 
+    # User admin helpers
+    def list_users(self, limit: int, offset: int) -> List[UserRead]:
+        users = self.session.exec(select(User).offset(offset).limit(limit)).all()
+        return [UserRead.from_orm(user) for user in users]
 
-def paginate(limit: Optional[int], offset: Optional[int], default_limit: int) -> Tuple[int, int]:
+    def update_user_role(self, user_id: str, payload: UserRoleUpdate) -> UserRead:
+        user = self.session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        user.role = payload.role
+        self.session.add(user)
+        self._revoke_user_tokens(user_id)
+        self.session.flush()
+        return UserRead.from_orm(user)
+
+    def delete_user(self, user_id: str) -> None:
+        user = self.session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        rooms_to_delete = self.session.exec(
+            select(Room.code).where(Room.host_user_id == user_id)
+        ).all()
+
+        self.session.exec(delete(RoomMembership).where(RoomMembership.user_id == user_id))
+        self.session.exec(delete(Token).where(Token.user_id == user_id))
+
+        for (room_code,) in rooms_to_delete:
+            self.delete_room(room_code)
+
+        self.session.delete(user)
+        self.session.flush()
+
+    # Room admin helpers
+    def list_all_rooms(
+        self, limit: int, offset: int, status: str | None = None, sort: str | None = None
+    ) -> List[RoomRead]:
+        base_query = select(Room)
+        if status:
+            base_query = base_query.where(Room.status == status)
+
+        sort = sort or "-created_at"
+        sort_field = sort[1:] if sort.startswith("-") else sort
+        if not hasattr(Room, sort_field):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sort field")
+        if sort.startswith("-"):
+            base_query = base_query.order_by(getattr(Room, sort_field).desc())
+        else:
+            base_query = base_query.order_by(getattr(Room, sort_field).asc())
+
+        rooms = self.session.exec(base_query.offset(offset).limit(limit)).all()
+        return [self._room_to_read(room, None) for room in rooms]
+
+    def delete_room(self, room_code: str) -> None:
+        room = self.session.get(Room, room_code)
+        if not room:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+        self.session.exec(delete(RoomMembership).where(RoomMembership.room_code == room_code))
+        self.session.delete(room)
+        self.session.flush()
+
+
+def paginate(
+    limit: Optional[int], offset: Optional[int], default_limit: int, max_limit: Optional[int] = None
+) -> Tuple[int, int]:
     limit_value = limit or default_limit
-    limit_value = max(1, min(limit_value, default_limit))
+    upper_bound = max_limit or default_limit
+    limit_value = max(1, min(limit_value, upper_bound))
     offset_value = max(0, offset or 0)
     return limit_value, offset_value

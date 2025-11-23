@@ -11,6 +11,23 @@ const TRANSLATIONS = {
   en: {
     title: "JOJ Game Web Client",
     subtitle: "Interact with the FastAPI server from your browser.",
+    layout: {
+      game: {
+        heading: "Game Lobby",
+        subheading:
+          "Create or browse rooms and interact with the gameplay workspace.",
+      },
+      admin: {
+        heading: "Administrative tools",
+        subheading:
+          "Manage cards and decks with an admin token supplied by the server.",
+      },
+      management: {
+        heading: "Management hub",
+        subheading:
+          "Choose which module to manage: system, players, cards, or decks.",
+      },
+    },
     language: { label: "Language" },
     server: {
       heading: "Server connection",
@@ -24,6 +41,12 @@ const TRANSLATIONS = {
       hint1: "Needed for the /admin API. Stored only in this page during your session.",
       hint2: "Admin tools appear once a token is provided.",
       loadData: "Load cards & decks",
+      status: {
+        idle: "Enter the admin token to unlock tools.",
+        checking: "Checking admin token...",
+        valid: "Admin token validated.",
+        invalid: "Admin token invalid.",
+      },
     },
     login: {
       heading: "Guest login",
@@ -52,6 +75,7 @@ const TRANSLATIONS = {
       },
       meta: {
         host: "Host",
+        name: "Name",
         code: "Code",
         players: "Players",
         spectators: "Spectators",
@@ -151,10 +175,20 @@ const TRANSLATIONS = {
       delete: "Delete",
     },
     status: { heading: "Status" },
+    session: {
+      apiLabel: "API base",
+      userLabel: "User",
+      userGuest: "Guest (not signed in)",
+      roomLabel: "Room",
+      roomNone: "Not joined",
+      adminLabel: "Admin",
+      adminMissing: "Token missing",
+    },
     messages: {
       adminTokenRequired: "Enter the admin token first.",
       sessionExpired: "Session expired. Please log in again.",
       sessionRestored: "Restored previous session.",
+      loggedOut: "Logged out. You can sign in again when ready.",
       loginSuccess: "Logged in as {name}.",
       displayNameRequired: "Display name is required",
       passwordRequired: "Password is required",
@@ -180,6 +214,8 @@ const TRANSLATIONS = {
       unableLoadDecks: "Unable to load decks: {status}",
       createCardFailed: "Create card failed: {status} {detail}",
       createDeckFailed: "Create deck failed: {status} {detail}",
+      invalidAdminToken: "Invalid admin token.",
+      adminTokenCheckFailed: "Unable to verify admin token: {status}",
       deleteCardFailed: "Delete card failed: {status} {detail}",
       deleteDeckFailed: "Delete deck failed: {status} {detail}",
       exportDeckFailed: "Export failed: {status} {detail}",
@@ -203,6 +239,23 @@ const TRANSLATIONS = {
   uk: {
     title: "Вебклієнт JOJ Game",
     subtitle: "Працюйте з сервером FastAPI просто у браузері.",
+    layout: {
+      game: {
+        heading: "Ігрове лобі",
+        subheading:
+          "Створюйте або переглядайте кімнати та працюйте з ігровим простором.",
+      },
+      admin: {
+        heading: "Адміністративні інструменти",
+        subheading:
+          "Керуйте картами та колодами за допомогою адмін-токена від сервера.",
+      },
+      management: {
+        heading: "Центр керування",
+        subheading:
+          "Оберіть модуль для керування: система, гравці, карти чи колоди.",
+      },
+    },
     language: { label: "Мова" },
     server: {
       heading: "Підключення до сервера",
@@ -216,6 +269,12 @@ const TRANSLATIONS = {
       hint1: "Потрібен для API /admin. Зберігається лише під час сеансу сторінки.",
       hint2: "Інструменти адміністратора з'являються після введення токена.",
       loadData: "Завантажити карти та колоди",
+      status: {
+        idle: "Введіть адмін-токен, щоб розблокувати інструменти.",
+        checking: "Перевіряємо адмін-токен...",
+        valid: "Адмін-токен підтверджено.",
+        invalid: "Адмін-токен недійсний.",
+      },
     },
     login: {
       heading: "Гостьовий вхід",
@@ -244,6 +303,7 @@ const TRANSLATIONS = {
       },
       meta: {
         host: "Хост",
+        name: "Назва",
         code: "Код",
         players: "Гравців",
         spectators: "Глядачів",
@@ -343,10 +403,20 @@ const TRANSLATIONS = {
       delete: "Видалити",
     },
     status: { heading: "Статус" },
+    session: {
+      apiLabel: "API база",
+      userLabel: "Користувач",
+      userGuest: "Гість (не авторизовано)",
+      roomLabel: "Кімната",
+      roomNone: "Не приєднано",
+      adminLabel: "Адмін",
+      adminMissing: "Немає токена",
+    },
     messages: {
       adminTokenRequired: "Спочатку введіть адмін-токен.",
       sessionExpired: "Сесію завершено. Увійдіть ще раз.",
       sessionRestored: "Попередню сесію відновлено.",
+      loggedOut: "Ви вийшли із сеансу. Можете увійти знову, коли будете готові.",
       loginSuccess: "Увійшли як {name}.",
       displayNameRequired: "Потрібно вказати ім'я гравця",
       passwordRequired: "Потрібно ввести пароль",
@@ -372,6 +442,8 @@ const TRANSLATIONS = {
       unableLoadDecks: "Не вдалося завантажити колоди: {status}",
       createCardFailed: "Не вдалося створити карту: {status} {detail}",
       createDeckFailed: "Не вдалося створити колоду: {status} {detail}",
+      invalidAdminToken: "Невірний адмін-токен.",
+      adminTokenCheckFailed: "Не вдалося перевірити адмін-токен: {status}",
       deleteCardFailed: "Не вдалося видалити карту: {status} {detail}",
       deleteDeckFailed: "Не вдалося видалити колоду: {status} {detail}",
       exportDeckFailed: "Не вдалося експортувати: {status} {detail}",
@@ -399,17 +471,31 @@ let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
 
 const pageName = document.body.dataset.page || "all";
 const statusArea = document.getElementById("statusArea");
+const toast = document.getElementById("toast");
 const apiBaseInput = document.getElementById("apiBase");
 const guestLoginForm = document.getElementById("guestLoginForm");
 const registerGuestButton = document.getElementById("registerGuest");
+const loginFormError = document.getElementById("loginFormError");
 const roomForm = document.getElementById("roomForm");
-const roomsList = document.getElementById("roomsList");
+const roomsTableBody = document.getElementById("roomsTableBody");
+const roomsTable = document.getElementById("roomsTable");
 const refreshRoomsButton = document.getElementById("refreshRooms");
+const roomFormError = document.getElementById("roomFormError");
 const userInfo = document.getElementById("userInfo");
+const sessionApiChip = document.getElementById("sessionApiChip");
+const sessionUserChip = document.getElementById("sessionUserChip");
+const sessionRoomChip = document.getElementById("sessionRoomChip");
+const sessionAdminChip = document.getElementById("sessionAdminChip");
+const navLoginLink = document.querySelector('[data-nav="login"]');
+const navGameLink = document.querySelector('[data-nav="game"]');
+const navManagementLink = document.querySelector('[data-nav="management"]');
+const navAdminLink = document.querySelector('[data-nav="admin"]');
+const navLogoutButton = document.getElementById("logoutButton");
 const adminTokenInput = document.getElementById("adminToken");
 const refreshAdminDataButton = document.getElementById("refreshAdminData");
 const refreshCardsButton = document.getElementById("refreshCards");
 const refreshDecksButton = document.getElementById("refreshDecks");
+const adminTokenStatusLabel = document.getElementById("adminTokenStatus");
 const cardForm = document.getElementById("cardForm");
 const deckForm = document.getElementById("deckForm");
 const deckImportPayload = document.getElementById("deckImportPayload");
@@ -433,6 +519,9 @@ let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
 let deckCards = [];
 let handCards = [];
 let workspaceCards = [];
+let adminTokenStatus = { value: "", isValid: false, isChecking: false };
+let adminValidationTimer = null;
+let toastTimer = null;
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -489,6 +578,156 @@ function applyTranslations() {
     const value = t(node.dataset.i18nPlaceholder);
     node.placeholder = value;
   });
+  syncSessionBar();
+}
+
+function setChipText(chip, { label, value, tone = null, hidden = false }) {
+  if (!chip) return;
+  const labelNode = chip.querySelector(".chip-label");
+  const valueNode = chip.querySelector(".chip-value");
+  if (labelNode) labelNode.textContent = label;
+  if (valueNode) valueNode.textContent = value;
+  chip.hidden = hidden;
+  ["success", "warning"].forEach((cls) => chip.classList.remove(cls));
+  if (tone) {
+    chip.classList.add(tone);
+  }
+}
+
+function syncNavLinks() {
+  const isLoggedIn = Boolean(authToken && currentUser);
+
+  if (navLoginLink) {
+    navLoginLink.textContent = "LOGIN";
+    navLoginLink.hidden = isLoggedIn;
+  }
+
+  if (navGameLink) {
+    navGameLink.textContent = "GAME";
+    navGameLink.hidden = !isLoggedIn;
+  }
+
+  if (navManagementLink) {
+    navManagementLink.hidden = true;
+  }
+
+  if (navAdminLink) {
+    navAdminLink.hidden = true;
+  }
+
+  if (navLogoutButton) {
+    navLogoutButton.hidden = !isLoggedIn;
+    navLogoutButton.disabled = !isLoggedIn;
+  }
+}
+
+function syncSessionBar() {
+  if (sessionApiChip && apiBaseInput) {
+    const apiValue = apiBaseInput.value.trim() || t("session.userGuest");
+    setChipText(sessionApiChip, {
+      label: t("session.apiLabel"),
+      value: apiValue,
+      tone: apiValue ? null : "warning",
+    });
+  }
+
+  if (sessionUserChip) {
+    const isLoggedIn = Boolean(currentUser && authToken);
+    setChipText(sessionUserChip, {
+      label: t("session.userLabel"),
+      value: isLoggedIn
+        ? `${currentUser.display_name} (#${currentUser.id})`
+        : t("session.userGuest"),
+      tone: isLoggedIn ? "success" : "warning",
+    });
+  }
+
+  if (sessionRoomChip) {
+    setChipText(sessionRoomChip, {
+      label: t("session.roomLabel"),
+      value: currentRoomCode || t("session.roomNone"),
+      hidden: !currentUser && !currentRoomCode,
+      tone: currentRoomCode ? "success" : "warning",
+    });
+  }
+
+  if (sessionAdminChip && adminTokenInput) {
+    const tone = adminTokenStatus.isValid
+      ? "success"
+      : adminTokenStatus.value
+      ? "warning"
+      : null;
+    const label = t("session.adminLabel");
+    let value = t("session.adminMissing");
+    if (adminTokenStatus.isChecking) {
+      value = t("admin.status.checking");
+    } else if (adminTokenStatus.isValid) {
+      value = t("admin.status.valid");
+    } else if (adminTokenStatus.value) {
+      value = t("admin.status.invalid");
+    }
+    setChipText(sessionAdminChip, {
+      label,
+      value,
+      hidden: !adminTokenInput,
+      tone,
+    });
+  }
+
+  syncNavLinks();
+}
+
+function withBusyState(button, task) {
+  const targetButton = button || null;
+  const originalText = targetButton?.textContent;
+  if (targetButton) {
+    targetButton.disabled = true;
+    targetButton.dataset.originalText = originalText || "";
+    targetButton.classList.add("is-busy");
+    targetButton.setAttribute("aria-busy", "true");
+    if (originalText && !originalText.endsWith("…")) {
+      targetButton.textContent = `${originalText}…`;
+    }
+  }
+
+  const finalize = () => {
+    if (!targetButton) return;
+    targetButton.disabled = false;
+    targetButton.classList.remove("is-busy");
+    targetButton.removeAttribute("aria-busy");
+    if (targetButton.dataset.originalText) {
+      targetButton.textContent = targetButton.dataset.originalText;
+    }
+  };
+
+  const result = task();
+  if (result && typeof result.finally === "function") {
+    return result.finally(finalize);
+  }
+  finalize();
+  return result;
+}
+
+function setFieldError(target, message = "") {
+  if (!target) return;
+  target.textContent = message;
+}
+
+function clearFieldErrors(...targets) {
+  targets.filter(Boolean).forEach((target) => setFieldError(target));
+}
+
+function showToast(message, isError = false) {
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.toggle("error", isError);
+  toast.hidden = false;
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+  }, 4000);
 }
 
 function setLanguage(language) {
@@ -506,6 +745,7 @@ function setLanguage(language) {
   renderDeckCount();
   renderHand();
   renderWorkspace();
+  syncAdminUi();
 }
 
 function log(message, isError = false) {
@@ -513,12 +753,22 @@ function log(message, isError = false) {
   const line = `[${prefix}] ${message}`;
   if (statusArea) {
     statusArea.textContent = `${line}\n${statusArea.textContent}`.trim();
+    statusArea.classList.toggle("error", isError);
+    statusArea.setAttribute("aria-label", line);
     if (isError) {
-      statusArea.classList.add("error");
+      statusArea.scrollTop = 0;
     }
   } else {
     console[isError ? "error" : "log"](line);
   }
+  if (isError) {
+    showToast(message, true);
+  }
+}
+
+function setRoomFormError(message) {
+  if (!roomFormError) return;
+  roomFormError.textContent = message || "";
 }
 
 function apiUrl(path) {
@@ -536,7 +786,9 @@ function persistApiBase() {
   }
   apiBaseInput.addEventListener("input", () => {
     localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
+    syncSessionBar();
   });
+  syncSessionBar();
 }
 
 function requireAdminToken() {
@@ -546,6 +798,9 @@ function requireAdminToken() {
   const token = adminTokenInput.value.trim();
   if (!token) {
     throw new Error(t("messages.adminTokenRequired"));
+  }
+  if (!adminTokenStatus.isValid || adminTokenStatus.value !== token) {
+    throw new Error(t("messages.invalidAdminToken"));
   }
   return token;
 }
@@ -562,6 +817,7 @@ function setAuthSession(token, user) {
     setCurrentRoom(null);
     resetGameplayState();
   }
+  syncSessionBar();
 }
 
 function setCurrentRoom(roomCode) {
@@ -577,6 +833,7 @@ function setCurrentRoom(roomCode) {
     resetGameplayState();
   }
   setUserInfo();
+  syncSessionBar();
 }
 
 function syncRoomSelection(rooms) {
@@ -608,39 +865,104 @@ function adminHeaders() {
   };
 }
 
-function hasAdminToken() {
-  return Boolean(adminTokenInput && adminTokenInput.value.trim());
+function scheduleAdminTokenValidation() {
+  if (!adminTokenInput) return;
+  clearTimeout(adminValidationTimer);
+  const token = adminTokenInput.value.trim();
+  adminTokenStatus = { value: token, isValid: false, isChecking: Boolean(token) };
+  syncAdminUi();
+  if (!token) {
+    return;
+  }
+  adminValidationTimer = setTimeout(validateAdminToken, 300);
+}
+
+async function validateAdminToken() {
+  const token = adminTokenStatus.value;
+  if (!token) {
+    syncAdminUi();
+    return;
+  }
+  adminTokenStatus.isChecking = true;
+  syncAdminUi();
+  try {
+    const response = await fetch(apiUrl("/admin/verify"), {
+      headers: { "X-Admin-Token": token },
+    });
+    if (adminTokenStatus.value !== token) {
+      return;
+    }
+    if (!response.ok) {
+      adminTokenStatus.isValid = false;
+      log(t("messages.adminTokenCheckFailed", { status: response.status }), true);
+    } else {
+      adminTokenStatus.isValid = true;
+    }
+  } catch (error) {
+    adminTokenStatus.isValid = false;
+    log(error.message, true);
+  } finally {
+    adminTokenStatus.isChecking = false;
+    syncAdminUi();
+  }
 }
 
 function syncAdminUi() {
   if (!adminTokenInput) return;
-  const adminMode = hasAdminToken();
+  const adminMode = adminTokenStatus.isValid;
+  const adminBusy = adminTokenStatus.isChecking;
   adminOnlySections.forEach((section) => {
     section.hidden = !adminMode;
   });
   [refreshAdminDataButton, refreshCardsButton, refreshDecksButton].forEach((button) => {
     if (button) {
-      button.disabled = !adminMode;
+      button.disabled = !adminMode || adminBusy;
     }
   });
+  if (adminTokenStatusLabel) {
+    let statusKey = "admin.status.idle";
+    if (adminTokenStatus.isChecking) {
+      statusKey = "admin.status.checking";
+    } else if (adminMode) {
+      statusKey = "admin.status.valid";
+    } else if (adminTokenStatus.value) {
+      statusKey = "admin.status.invalid";
+    }
+    adminTokenStatusLabel.textContent = t(statusKey);
+    adminTokenStatusLabel.hidden = !adminTokenStatus.value;
+    adminTokenStatusLabel.classList.toggle("success", adminMode);
+    adminTokenStatusLabel.classList.toggle("warning", adminBusy);
+  }
+  syncSessionBar();
 }
 
 function setUserInfo() {
   if (!userInfo) return;
   if (!currentUser) {
     userInfo.textContent = t("login.notSignedIn");
+    syncSessionBar();
     return;
   }
   const roomNote = currentRoomCode
     ? ` | ${t("rooms.meta.code")}: <strong>${currentRoomCode}</strong>`
     : "";
   userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})${roomNote}`;
+  syncSessionBar();
 }
 
 function handleAuthFailure() {
   log(t("messages.sessionExpired"), true);
   setAuthSession(null, null);
   setUserInfo();
+}
+
+function logoutUser() {
+  setAuthSession(null, null);
+  setUserInfo();
+  log(t("messages.loggedOut"));
+  if (pageName !== "auth") {
+    window.location.href = "index.html";
+  }
 }
 
 function resetGameplayState() {
@@ -880,117 +1202,122 @@ function getGuestCredentials() {
   }
   const displayName = displayNameInput.value.trim();
   const password = loginPasswordInput.value.trim();
+  clearFieldErrors(loginFormError);
   if (!displayName) {
-    log(t("messages.displayNameRequired"), true);
+    const message = t("messages.displayNameRequired");
+    setFieldError(loginFormError, message);
+    log(message, true);
     return null;
   }
   if (!password) {
-    log(t("messages.passwordRequired"), true);
+    const message = t("messages.passwordRequired");
+    setFieldError(loginFormError, message);
+    log(message, true);
     return null;
   }
   return { displayName, password };
 }
 
-async function authenticateGuest(successMessageKey) {
+async function authenticateGuest(successMessageKey, button) {
   const credentials = getGuestCredentials();
   if (!credentials) return;
 
-  try {
-    if (apiBaseInput) {
-      localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
-    }
+  await withBusyState(button, async () => {
+    try {
+      if (apiBaseInput) {
+        localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
+      }
 
-    const response = await fetch(apiUrl("/auth/login"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: "guest",
-        display_name: credentials.displayName,
-        password: credentials.password,
-      }),
-    });
+      const response = await fetch(apiUrl("/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "guest",
+          display_name: credentials.displayName,
+          password: credentials.password,
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(t("messages.loginFailed", { status: response.status }));
-    }
+      if (!response.ok) {
+        throw new Error(t("messages.loginFailed", { status: response.status }));
+      }
 
-    const data = await response.json();
-    setAuthSession(data.access_token, data.user);
-    log(t(successMessageKey, { name: currentUser.display_name }));
-    setUserInfo();
-    const redirectTarget = document.body.dataset.redirectAfterAuth;
-    if (redirectTarget) {
-      window.location.href = redirectTarget;
-      return;
+      const data = await response.json();
+      clearFieldErrors(loginFormError);
+      setAuthSession(data.access_token, data.user);
+      log(t(successMessageKey, { name: currentUser.display_name }));
+      setUserInfo();
+      const redirectTarget = document.body.dataset.redirectAfterAuth;
+      if (redirectTarget) {
+        window.location.href = redirectTarget;
+        return;
+      }
+      await loadRooms();
+      await prepareGameplayArea();
+    } catch (error) {
+      log(error.message, true);
     }
-    await loadRooms();
-    await prepareGameplayArea();
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
 async function handleGuestLogin(event) {
   event.preventDefault();
-  await authenticateGuest("messages.loginSuccess");
+  await authenticateGuest("messages.loginSuccess", event.submitter);
 }
 
 async function handleGuestRegistration(event) {
   event.preventDefault();
-  await authenticateGuest("messages.registrationSuccess");
+  await authenticateGuest("messages.registrationSuccess", event.submitter);
 }
 
-async function loadRooms() {
-  if (!roomsList) return;
-  try {
-    const headers = {};
-    if (authToken) {
-      headers.Authorization = `Bearer ${authToken}`;
-    }
-    const response = await fetch(apiUrl("/rooms"), { headers });
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleAuthFailure();
+async function loadRooms(event) {
+  if (!roomsTableBody) return;
+  const button = event?.currentTarget || refreshRoomsButton;
+  await withBusyState(button, async () => {
+    try {
+      const headers = {};
+      if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
       }
-      throw new Error(t("messages.unableToLoadRooms", { status: response.status }));
+      const response = await fetch(apiUrl("/rooms"), { headers });
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleAuthFailure();
+        }
+        throw new Error(t("messages.unableToLoadRooms", { status: response.status }));
+      }
+      const rooms = await response.json();
+      if (authToken) {
+        syncRoomSelection(rooms);
+      }
+      setUserInfo();
+      renderRooms(rooms);
+      log(t("messages.roomsLoaded", { count: rooms.length }));
+    } catch (error) {
+      log(error.message, true);
     }
-    const rooms = await response.json();
-    if (authToken) {
-      syncRoomSelection(rooms);
-    }
-    setUserInfo();
-    renderRooms(rooms);
-    log(t("messages.roomsLoaded", { count: rooms.length }));
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
 function renderRooms(rooms) {
-  if (!roomsList) return;
-  roomsList.innerHTML = "";
+  if (!roomsTableBody) return;
+  roomsTableBody.innerHTML = "";
   if (!rooms.length) {
-    roomsList.innerHTML = `<li class="muted">${t("rooms.list.empty")}</li>`;
+    const emptyRow = document.createElement("tr");
+    const emptyCell = document.createElement("td");
+    emptyCell.colSpan = 10;
+    emptyCell.className = "muted";
+    emptyCell.textContent = t("rooms.list.empty");
+    emptyRow.appendChild(emptyCell);
+    roomsTableBody.appendChild(emptyRow);
     return;
   }
 
   rooms.forEach((room) => {
-    const item = document.createElement("li");
+    const row = document.createElement("tr");
     if (room.code === currentRoomCode) {
-      item.classList.add("active-room");
+      row.classList.add("active-room");
     }
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = room.name;
-    if (room.code === currentRoomCode) {
-      const currentBadge = document.createElement("span");
-      currentBadge.className = "pill";
-      currentBadge.textContent = t("rooms.join.current");
-      title.appendChild(currentBadge);
-    }
-
-    const meta = document.createElement("div");
-    meta.className = "meta";
     const statusLabel = t(`rooms.status.${room.status}`);
     const joinableLabel =
       room.status !== "active"
@@ -999,18 +1326,34 @@ function renderRooms(rooms) {
         ? t("rooms.join.joinable")
         : t("rooms.join.full");
     const created = new Date(room.created_at).toLocaleString();
-    const metaBits = [
-      `${t("rooms.meta.host")}: ${room.host_user_id}`,
-      `${t("rooms.meta.code")}: ${room.code}`,
-      `${t("rooms.meta.players")}: ${room.player_count}/${room.max_players}`,
-      `${t("rooms.meta.spectators")}: ${room.spectator_count}/${room.max_spectators}`,
-      `${t("rooms.meta.visibility")}: ${room.visibility}`,
-      `${t("rooms.meta.status")}: ${statusLabel}`,
-      `${t("rooms.meta.joinable")}: ${joinableLabel}`,
-      `${t("rooms.meta.created")}: ${created}`,
-    ];
-    meta.textContent = metaBits.join(" | ");
 
+    const cells = [
+      room.code,
+      room.name,
+      room.host_user_id,
+      `${room.player_count}/${room.max_players}`,
+      `${room.spectator_count}/${room.max_spectators}`,
+      room.visibility,
+      statusLabel,
+      joinableLabel,
+      created,
+    ];
+
+    cells.forEach((value, index) => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      if (index === 1 && room.code === currentRoomCode) {
+        const badge = document.createElement("span");
+        badge.className = "pill";
+        badge.textContent = t("rooms.join.current");
+        badge.ariaLabel = t("rooms.join.current");
+        cell.appendChild(document.createTextNode(" "));
+        cell.appendChild(badge);
+      }
+      row.appendChild(cell);
+    });
+
+    const actionCell = document.createElement("td");
     const actions = document.createElement("div");
     actions.className = "item-actions";
     if (room.is_joined) {
@@ -1024,6 +1367,7 @@ function renderRooms(rooms) {
       joinButton.className = "ghost";
       joinButton.textContent = t("rooms.join.cta");
       joinButton.disabled = !authToken || !room.is_joinable;
+      joinButton.setAttribute("aria-label", `${t("rooms.join.cta")}: ${room.name}`);
       if (!room.is_joinable) {
         joinButton.title = joinableLabel;
       }
@@ -1033,72 +1377,88 @@ function renderRooms(rooms) {
       joinButton.addEventListener("click", () => joinRoom(room.code));
       actions.appendChild(joinButton);
     }
-
-    item.appendChild(title);
-    item.appendChild(meta);
-    item.appendChild(actions);
-    roomsList.appendChild(item);
+    actionCell.appendChild(actions);
+    row.appendChild(actionCell);
+    roomsTableBody.appendChild(row);
   });
+
+  if (roomsTable) {
+    roomsTable.classList.toggle("has-active", rooms.some((room) => room.code === currentRoomCode));
+  }
 }
 
 async function createRoom(event) {
   event.preventDefault();
+  const button = event.submitter;
   const roomName = document.getElementById("roomName").value.trim();
   const maxPlayers = parseInt(document.getElementById("maxPlayers").value, 10);
   const maxSpectators = parseInt(
     document.getElementById("maxSpectators").value,
     10
   );
-  if (!authToken) {
-    log(t("messages.loginRequiredRoom"), true);
-    return;
-  }
-  if (!roomName) {
-    log(t("messages.roomNameRequired"), true);
-    return;
-  }
-  if (Number.isNaN(maxPlayers)) {
-    log(t("messages.maxPlayersRequired"), true);
-    return;
-  }
-  if (Number.isNaN(maxSpectators)) {
-    log(t("messages.spectatorsRequired"), true);
-    return;
-  }
-
-  try {
-    const response = await fetch(apiUrl("/rooms"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({
-        name: roomName,
-        max_players: maxPlayers,
-        max_spectators: maxSpectators,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      if (response.status === 401) {
-        handleAuthFailure();
-      }
-      throw new Error(
-        t("messages.createRoomFailed", { status: response.status, detail: errText })
-      );
+  setRoomFormError("");
+  await withBusyState(button, async () => {
+    if (!authToken) {
+      const message = t("messages.loginRequiredRoom");
+      setRoomFormError(message);
+      log(message, true);
+      return;
+    }
+    if (!roomName) {
+      const message = t("messages.roomNameRequired");
+      setRoomFormError(message);
+      log(message, true);
+      return;
+    }
+    if (Number.isNaN(maxPlayers) || maxPlayers < 2 || maxPlayers > 6) {
+      const message = t("messages.maxPlayersRequired");
+      setRoomFormError(message);
+      log(message, true);
+      return;
+    }
+    if (Number.isNaN(maxSpectators) || maxSpectators < 0 || maxSpectators > 10) {
+      const message = t("messages.spectatorsRequired");
+      setRoomFormError(message);
+      log(message, true);
+      return;
     }
 
-    const room = await response.json();
-    setCurrentRoom(room.code);
-    log(t("messages.roomCreated", { name: room.name, code: room.code }));
-    document.getElementById("roomName").value = "";
-    await loadRooms();
-    await prepareGameplayArea();
-  } catch (error) {
-    log(error.message, true);
-  }
+    try {
+      const response = await fetch(apiUrl("/rooms"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          name: roomName,
+          max_players: maxPlayers,
+          max_spectators: maxSpectators,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        if (response.status === 401) {
+          handleAuthFailure();
+        }
+        throw new Error(
+          t("messages.createRoomFailed", { status: response.status, detail: errText })
+        );
+      }
+
+      const room = await response.json();
+      setCurrentRoom(room.code);
+      log(t("messages.roomCreated", { name: room.name, code: room.code }));
+      document.getElementById("roomName").value = "";
+      setRoomFormError("");
+      await loadRooms();
+      await prepareGameplayArea();
+    } catch (error) {
+      log(error.message, true);
+      setRoomFormError(error.message);
+    }
+  });
 }
 
 function formatCardEffects(card) {
@@ -1205,42 +1565,49 @@ function renderDecks(decks) {
   });
 }
 
-async function loadCards() {
+async function loadCards(event) {
   if (!cardsList || !adminTokenInput) return;
-  try {
-    const response = await fetch(apiUrl("/admin/cards"), {
-      headers: { "X-Admin-Token": requireAdminToken() },
-    });
-    if (!response.ok) {
-      throw new Error(t("messages.unableLoadCards", { status: response.status }));
+  const button = event?.currentTarget || refreshCardsButton;
+  await withBusyState(button, async () => {
+    try {
+      const response = await fetch(apiUrl("/admin/cards"), {
+        headers: { "X-Admin-Token": requireAdminToken() },
+      });
+      if (!response.ok) {
+        throw new Error(t("messages.unableLoadCards", { status: response.status }));
+      }
+      const cards = await response.json();
+      renderCards(cards);
+      log(t("messages.cardsLoaded", { count: cards.length }));
+    } catch (error) {
+      log(error.message, true);
     }
-    const cards = await response.json();
-    renderCards(cards);
-    log(t("messages.cardsLoaded", { count: cards.length }));
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
-async function loadDecks() {
+async function loadDecks(event) {
   if (!decksList || !adminTokenInput) return;
-  try {
-    const response = await fetch(apiUrl("/admin/decks"), {
-      headers: { "X-Admin-Token": requireAdminToken() },
-    });
-    if (!response.ok) {
-      throw new Error(t("messages.unableLoadDecks", { status: response.status }));
+  const button = event?.currentTarget || refreshDecksButton;
+  await withBusyState(button, async () => {
+    try {
+      const response = await fetch(apiUrl("/admin/decks"), {
+        headers: { "X-Admin-Token": requireAdminToken() },
+      });
+      if (!response.ok) {
+        throw new Error(t("messages.unableLoadDecks", { status: response.status }));
+      }
+      const decks = await response.json();
+      renderDecks(decks);
+      log(t("messages.decksLoaded", { count: decks.length }));
+    } catch (error) {
+      log(error.message, true);
     }
-    const decks = await response.json();
-    renderDecks(decks);
-    log(t("messages.decksLoaded", { count: decks.length }));
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
 async function createCard(event) {
   event.preventDefault();
+  const button = event.submitter;
   const name = document.getElementById("cardName").value.trim();
   const description = document.getElementById("cardDescription").value.trim();
   const category = document.getElementById("cardCategory").value.trim();
@@ -1252,37 +1619,39 @@ async function createCard(event) {
     const value = Number.parseInt(input?.value, 10);
     resourcePayload[key] = Number.isNaN(value) ? 0 : value;
   });
-  if (!name || !description) {
-    log(t("messages.cardFieldsRequired"), true);
-    return;
-  }
-
-  try {
-    const response = await fetch(apiUrl("/admin/cards"), {
-      method: "POST",
-      headers: adminHeaders(),
-      body: JSON.stringify({
-        name,
-        description,
-        category: category || null,
-        ...resourcePayload,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.createCardFailed", { status: response.status, detail: errText })
-      );
+  await withBusyState(button, async () => {
+    if (!name || !description) {
+      log(t("messages.cardFieldsRequired"), true);
+      return;
     }
 
-    const card = await response.json();
-    log(t("messages.cardCreated", { name: card.name, id: card.id }));
-    cardForm.reset();
-    await loadCards();
-  } catch (error) {
-    log(error.message, true);
-  }
+    try {
+      const response = await fetch(apiUrl("/admin/cards"), {
+        method: "POST",
+        headers: adminHeaders(),
+        body: JSON.stringify({
+          name,
+          description,
+          category: category || null,
+          ...resourcePayload,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(
+          t("messages.createCardFailed", { status: response.status, detail: errText })
+        );
+      }
+
+      const card = await response.json();
+      log(t("messages.cardCreated", { name: card.name, id: card.id }));
+      cardForm.reset();
+      await loadCards();
+    } catch (error) {
+      log(error.message, true);
+    }
+  });
 }
 
 function parseCardIds(input) {
@@ -1297,36 +1666,39 @@ function parseCardIds(input) {
 
 async function createDeck(event) {
   event.preventDefault();
+  const button = event.submitter;
   const name = document.getElementById("deckName").value.trim();
   const description = document.getElementById("deckDescription").value.trim();
   const cardIdsInput = document.getElementById("deckCardIds").value;
   const card_ids = parseCardIds(cardIdsInput);
-  if (!name) {
-    log(t("messages.deckNameRequired"), true);
-    return;
-  }
-
-  try {
-    const response = await fetch(apiUrl("/admin/decks"), {
-      method: "POST",
-      headers: adminHeaders(),
-      body: JSON.stringify({ name, description: description || null, card_ids }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.createDeckFailed", { status: response.status, detail: errText })
-      );
+  await withBusyState(button, async () => {
+    if (!name) {
+      log(t("messages.deckNameRequired"), true);
+      return;
     }
 
-    const deck = await response.json();
-    log(t("messages.deckCreated", { name: deck.name, id: deck.id }));
-    deckForm.reset();
-    await loadDecks();
-  } catch (error) {
-    log(error.message, true);
-  }
+    try {
+      const response = await fetch(apiUrl("/admin/decks"), {
+        method: "POST",
+        headers: adminHeaders(),
+        body: JSON.stringify({ name, description: description || null, card_ids }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(
+          t("messages.createDeckFailed", { status: response.status, detail: errText })
+        );
+      }
+
+      const deck = await response.json();
+      log(t("messages.deckCreated", { name: deck.name, id: deck.id }));
+      deckForm.reset();
+      await loadDecks();
+    } catch (error) {
+      log(error.message, true);
+    }
+  });
 }
 
 async function deleteCard(cardId) {
@@ -1388,7 +1760,8 @@ async function exportDeck(deckId) {
   }
 }
 
-async function importDeck() {
+async function importDeck(event) {
+  const button = event?.currentTarget || importDeckButton;
   if (!deckImportPayload) return;
   const raw = deckImportPayload.value.trim();
   if (!raw) {
@@ -1404,30 +1777,33 @@ async function importDeck() {
     return;
   }
 
-  try {
-    const response = await fetch(apiUrl("/admin/decks/import"), {
-      method: "POST",
-      headers: adminHeaders(),
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.importDeckFailed", { status: response.status, detail: errText })
-      );
-    }
+  await withBusyState(button, async () => {
+    try {
+      const response = await fetch(apiUrl("/admin/decks/import"), {
+        method: "POST",
+        headers: adminHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(
+          t("messages.importDeckFailed", { status: response.status, detail: errText })
+        );
+      }
 
-    const deck = await response.json();
-    log(t("messages.deckImported", { name: deck.name, id: deck.id }));
-    deckImportPayload.value = "";
-    await loadDecks();
-  } catch (error) {
-    log(error.message, true);
-  }
+      const deck = await response.json();
+      log(t("messages.deckImported", { name: deck.name, id: deck.id }));
+      deckImportPayload.value = "";
+      await loadDecks();
+    } catch (error) {
+      log(error.message, true);
+    }
+  });
 }
 
-async function loadAdminData() {
-  await Promise.all([loadCards(), loadDecks()]);
+async function loadAdminData(event) {
+  const button = event?.currentTarget || refreshAdminDataButton;
+  await withBusyState(button, () => Promise.all([loadCards(), loadDecks()]));
 }
 
 function wireEvents() {
@@ -1436,7 +1812,10 @@ function wireEvents() {
     registerGuestButton.addEventListener("click", handleGuestRegistration);
   if (roomForm) roomForm.addEventListener("submit", createRoom);
   if (refreshRoomsButton) refreshRoomsButton.addEventListener("click", loadRooms);
-  if (adminTokenInput) adminTokenInput.addEventListener("input", syncAdminUi);
+  if (adminTokenInput) {
+    adminTokenInput.addEventListener("input", scheduleAdminTokenValidation);
+    adminTokenInput.addEventListener("blur", scheduleAdminTokenValidation);
+  }
   if (refreshAdminDataButton)
     refreshAdminDataButton.addEventListener("click", loadAdminData);
   if (refreshCardsButton) refreshCardsButton.addEventListener("click", loadCards);
@@ -1451,12 +1830,13 @@ function wireEvents() {
     languageSelector.addEventListener("change", (event) => {
       setLanguage(event.target.value);
     });
+  if (navLogoutButton) navLogoutButton.addEventListener("click", logoutUser);
 }
 
 persistApiBase();
 setLanguage(currentLanguage);
 wireEvents();
-syncAdminUi();
+scheduleAdminTokenValidation();
 setUserInfo();
 restoreSession();
 log(t("messages.ready"));

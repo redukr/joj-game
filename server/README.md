@@ -19,12 +19,11 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    ```bash
    pip install -r requirements.txt
    ```
-3. Configure environment (optional). Set an admin token and allowed OAuth providers in `.env`:
+3. Configure environment (optional). Set allowed OAuth providers in `.env`:
    ```bash
-   echo "ADMIN_TOKEN=supersecret" > .env
    echo "ALLOWED_OAUTH_PROVIDERS=apple,google,guest" >> .env
    # Add extra origins for the web client if needed (defaults allow any localhost/127.x port)
-   echo "ALLOWED_ORIGINS=http://localhost:8001,http://localhost:4173" >> .env
+   echo "ALLOWED_ORIGINS=http://localhost:8001,http://localhost:8002,http://localhost:4173" >> .env
    ```
    The server also permits any `http://localhost:<port>`, `https://localhost:<port>`, `http://127.0.0.1:<port>`, or
    `https://127.0.0.1:<port>` origin by default, so common dev setups (e.g., Vite on 5173/4173) work out of the box.
@@ -41,14 +40,18 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    ```
 
 ## API surface
-- `POST /auth/login` — sign in with provider `apple`, `google`, or `guest`; returns bearer token for subsequent calls.
-- `POST /admin/cards` — create a card (requires `X-Admin-Token` header).
+- `POST /auth/login` — sign in with provider `apple`, `google`, or `guest` (default if omitted); returns bearer token for subsequent calls. Payload accepts both `display_name` and `displayName` keys for guest sign-up/login.
+- `POST /admin/cards` — create a card (requires admin bearer token).
 - `PUT /admin/cards/{id}` / `DELETE /admin/cards/{id}` — maintain cards.
-- `POST /admin/decks` — create deck from existing cards (requires `X-Admin-Token`).
+- `POST /admin/decks` — create deck from existing cards (requires admin bearer token).
 - `POST /rooms` — create a room using `Authorization: Bearer <token>` from `/auth/login`.
 - `GET /rooms` — list all rooms.
 
 ## Notes
-- Data now persists to SQLite (`./data/app.db`) via SQLModel; adjust `DATABASE_URL` to point to a different location.
+- Data now persists to SQLite (`./data/app.db`) via SQLModel; adjust `DATABASE_URL` to point to a different location. The
+  repository no longer ships a prebuilt `app.db` file, so the first startup will create the database and seed cards from the
+  JSON files in `../cards/`.
+- On startup the database layer will recreate the file automatically if it encounters the previously malformed `deck` table
+  definition, preventing the schema error seen in older seeded databases.
 - Token validation for Apple/Google logins is stubbed; wire it to the real OAuth/OpenID Connect verification per provider when ready.
-- Decks can be exported with `GET /admin/decks/{id}/export` (admin token required); connect this to your renderer/export pipeline as needed.
+- Decks can be exported with `GET /admin/decks/{id}/export`; connect this to your renderer/export pipeline as needed.

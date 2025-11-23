@@ -25,18 +25,12 @@ def _file_settings_source(_: BaseSettings) -> dict[str, Any]:
 
 
 class Settings(BaseSettings):
-    admin_token: str = Field("redukr", env="ADMIN_TOKEN")
+    environment: str = Field("development", env="APP_ENV")
     database_url: str = Field("./data/app.db", env="DATABASE_URL")
     allowed_oauth_providers: List[str] = Field(
         default_factory=lambda: ["apple", "google", "guest"], env="ALLOWED_OAUTH_PROVIDERS"
     )
-    allowed_origins: List[str] = Field(
-        default_factory=lambda: [
-            "http://localhost:8001",
-            "http://127.0.0.1:8001",
-        ],
-        env="ALLOWED_ORIGINS",
-    )
+    allowed_origins: List[str] = Field(default_factory=list, env="ALLOWED_ORIGINS")
     oauth_audience: List[str] = Field(default_factory=list, env="OAUTH_AUDIENCE")
     google_issuer: str = Field("https://accounts.google.com", env="GOOGLE_ISSUER")
     google_jwks_url: str = Field(
@@ -46,11 +40,10 @@ class Settings(BaseSettings):
     apple_jwks_url: str = Field(
         "https://appleid.apple.com/auth/keys", env="APPLE_JWKS_URL"
     )
-    allowed_origin_regex: str | None = Field(
-        None,
-        env="ALLOWED_ORIGIN_REGEX",
-    )
+    allowed_origin_regex: str | None = Field(None, env="ALLOWED_ORIGIN_REGEX")
     default_page_size: int = Field(50, env="DEFAULT_PAGE_SIZE")
+    max_page_size: int = Field(100, env="MAX_PAGE_SIZE")
+    access_token_ttl_minutes: int = Field(30, env="ACCESS_TOKEN_TTL_MINUTES")
 
     @validator("allowed_oauth_providers", "allowed_origins", "oauth_audience", pre=True)
     def _split_csv(cls, value):  # noqa: N805
@@ -62,6 +55,26 @@ class Settings(BaseSettings):
     def _empty_regex_to_none(cls, value):  # noqa: N805
         if value in {"", None}:
             return None
+        return value
+
+    @validator("environment")
+    def _normalize_environment(cls, value: str) -> str:  # noqa: N805
+        normalized = value.lower()
+        if normalized not in {"development", "production", "staging"}:
+            raise ValueError("APP_ENV must be development, staging, or production")
+        return normalized
+
+    @validator("allowed_origins", each_item=True)
+    def _validate_origin_format(cls, value: str) -> str:  # noqa: N805
+        if not value.startswith("http://") and not value.startswith("https://"):
+            raise ValueError("Allowed origins must start with http:// or https://")
+        return value.rstrip("/")
+
+    @validator("allowed_origin_regex")
+    def _restrict_regex_in_prod(cls, value, values):  # noqa: N805
+        environment = values.get("environment", "development")
+        if environment == "production" and value:
+            raise ValueError("Origin regex is not allowed in production")
         return value
 
     class Config:

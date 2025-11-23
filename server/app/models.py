@@ -2,9 +2,25 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import List, Optional
 
-from sqlalchemy import Column
+from pydantic import validator
+from sqlalchemy import Column, String, UniqueConstraint
 from sqlalchemy.dialects.sqlite import JSON
 from sqlmodel import Field, SQLModel
+
+
+class Role(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+
+
+def _normalize_role_value(value: Role | str | None) -> str:
+    if isinstance(value, Role):
+        return value.value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in Role._value2member_map_:
+            return lowered
+    return Role.USER.value
 
 
 class Provider(str, Enum):
@@ -14,20 +30,30 @@ class Provider(str, Enum):
 
 
 class CardBase(SQLModel):
-    name: str = Field(..., description="Card name (e.g., 'Ляп на брифінгу')")
-    description: str = Field(
-        ..., description="Card description (e.g., 'Втрачено репутацію через невдалий виступ')"
+    name: str = Field(
+        ...,
+        max_length=128,
+        description="Card name (e.g., 'Ляп на брифінгу')",
     )
-    category: Optional[str] = Field(None, description="Card category (e.g., 'scandal')")
-    time: int = Field(0, description="Time effect for the card (e.g., +1 or -2)")
-    reputation: int = Field(0, description="Reputation effect for the card")
-    discipline: int = Field(0, description="Discipline effect for the card")
-    documents: int = Field(0, description="Documents effect for the card")
-    technology: int = Field(0, description="Technology effect for the card")
+    description: str = Field(
+        ...,
+        max_length=512,
+        description="Card description (e.g., 'Втрачено репутацію через невдалий виступ')",
+    )
+    category: Optional[str] = Field(
+        None, max_length=64, description="Card category (e.g., 'scandal')"
+    )
+    time: int = Field(0, ge=-10, le=10, description="Time effect for the card (e.g., +1 or -2)")
+    reputation: int = Field(0, ge=-10, le=10, description="Reputation effect for the card")
+    discipline: int = Field(0, ge=-10, le=10, description="Discipline effect for the card")
+    documents: int = Field(0, ge=-10, le=10, description="Documents effect for the card")
+    technology: int = Field(0, ge=-10, le=10, description="Technology effect for the card")
 
 
 class Card(CardBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    __table_args__ = (UniqueConstraint("name", "category", name="uq_card_name_category"),)
 
 
 class CardRead(CardBase):
@@ -64,15 +90,36 @@ class User(SQLModel, table=True):
     provider: Provider
     display_name: str
     password_hash: str | None = Field(default=None, description="Hashed password for local auth")
+    role: str = Field(
+        default=Role.USER.value,
+        sa_column=Column(String, nullable=False),
+    )
+
+    @validator("role", pre=True)
+    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
+        return _normalize_role_value(value)
 
 
 class UserRead(SQLModel):
     id: str
     provider: Provider
     display_name: str
+    role: str
+
+    @validator("role", pre=True)
+    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
+        return _normalize_role_value(value)
 
     class Config:
         orm_mode = True
+
+
+class UserRoleUpdate(SQLModel):
+    role: str
+
+    @validator("role", pre=True)
+    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
+        return _normalize_role_value(value)
 
 
 class Token(SQLModel, table=True):
@@ -80,6 +127,7 @@ class Token(SQLModel, table=True):
     user_id: str = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=12))
+    revoked_at: datetime | None = None
 
 
 class AuthResponse(SQLModel):
@@ -89,15 +137,31 @@ class AuthResponse(SQLModel):
 
 
 class LoginRequest(SQLModel):
-    provider: Provider
+    provider: Provider = Field(
+        Provider.GUEST,
+        description="Authentication provider; defaults to guest for simple registration",
+    )
     token: Optional[str] = Field(None, description="ID token from the provider")
-    display_name: Optional[str] = Field(None, description="Fallback name for guest accounts")
+    display_name: Optional[str] = Field(
+        None,
+        alias="displayName",
+        description="Fallback name for guest accounts",
+    )
     password: Optional[str] = Field(
         None,
         min_length=4,
         max_length=128,
+        alias="password",
         description="Password used for guest/local authentication",
     )
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class PasswordChangeRequest(SQLModel):
+    current_password: str = Field(..., min_length=4, max_length=128)
+    new_password: str = Field(..., min_length=4, max_length=128)
 
 
 class RoomCreate(SQLModel):

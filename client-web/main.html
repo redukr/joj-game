@@ -7,11 +7,13 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="main">
+    <a class="skip-link" href="#statusArea">Skip to status updates</a>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <header>
       <div class="header-main">
         <div>
-          <h1>Game Lobby</h1>
-          <p class="subtitle">
+          <h1 data-i18n="layout.game.heading">Game Lobby</h1>
+          <p class="subtitle" data-i18n="layout.game.subheading">
             Create or browse rooms and interact with the gameplay workspace.
           </p>
         </div>
@@ -26,11 +28,32 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="index.html">Login</a>
-        <a href="main.html" class="active">Game</a>
-        <a href="management.html">Management</a>
-        <a href="admin.html">Admin</a>
+        <a href="index.html" data-nav="login">LOGIN</a>
+        <a href="main.html" class="active" data-nav="game">GAME</a>
+        <a href="../admin-web/management.html" data-nav="management">Management</a>
+        <a href="../admin-web/admin.html" data-nav="admin">Admin</a>
+        <button type="button" id="logoutButton" class="nav-action" hidden>
+          LOGOUT
+        </button>
       </nav>
+      <div class="session-bar" role="status" aria-live="polite">
+        <div class="session-chip" id="sessionApiChip">
+          <span class="chip-label" data-i18n="session.apiLabel">API base</span>
+          <span class="chip-value"></span>
+        </div>
+        <div class="session-chip" id="sessionUserChip">
+          <span class="chip-label" data-i18n="session.userLabel">User</span>
+          <span class="chip-value" data-i18n="session.userGuest">Guest (not signed in)</span>
+        </div>
+        <div class="session-chip" id="sessionRoomChip">
+          <span class="chip-label" data-i18n="session.roomLabel">Room</span>
+          <span class="chip-value" data-i18n="session.roomNone">Not joined</span>
+        </div>
+        <div class="session-chip" id="sessionAdminChip">
+          <span class="chip-label" data-i18n="session.adminLabel">Admin</span>
+          <span class="chip-value" data-i18n="session.adminMissing">Token missing</span>
+        </div>
+      </div>
     </header>
 
     <section class="card">
@@ -44,7 +67,7 @@
       <div class="grid">
         <article class="card nested-card">
           <h3 data-i18n="rooms.create.heading">Create room</h3>
-          <form id="roomForm">
+          <form id="roomForm" novalidate>
             <label class="field">
               <span data-i18n="rooms.create.name">Room name</span>
               <input
@@ -80,6 +103,7 @@
                 value="0"
               />
             </label>
+            <div class="field-error" id="roomFormError" aria-live="polite"></div>
             <button type="submit" data-i18n="rooms.create.submit">Create room</button>
           </form>
         </article>
@@ -91,7 +115,26 @@
               <button id="refreshRooms" data-i18n="rooms.list.refresh">Refresh</button>
             </div>
           </div>
-          <ul id="roomsList" class="list"></ul>
+          <div class="table-wrapper" role="region" aria-live="polite">
+            <table class="data-table" id="roomsTable">
+              <caption data-i18n="rooms.list.heading">Rooms</caption>
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="rooms.meta.code">Code</th>
+                  <th scope="col" data-i18n="rooms.meta.name">Name</th>
+                  <th scope="col" data-i18n="rooms.meta.host">Host</th>
+                  <th scope="col" data-i18n="rooms.meta.players">Players</th>
+                  <th scope="col" data-i18n="rooms.meta.spectators">Spectators</th>
+                  <th scope="col" data-i18n="rooms.meta.visibility">Visibility</th>
+                  <th scope="col" data-i18n="rooms.meta.status">Status</th>
+                  <th scope="col" data-i18n="rooms.meta.joinable">Joinable</th>
+                  <th scope="col" data-i18n="rooms.meta.created">Created</th>
+                  <th scope="col" data-i18n="rooms.join.cta">Join</th>
+                </tr>
+              </thead>
+              <tbody id="roomsTableBody"></tbody>
+            </table>
+          </div>
         </article>
       </div>
     </section>
@@ -142,7 +185,13 @@
 
     <section class="card">
       <h2 data-i18n="status.heading">Status</h2>
-      <pre id="statusArea" class="status"></pre>
+      <pre
+        id="statusArea"
+        class="status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+      ></pre>
     </section>
 
     <section class="card">

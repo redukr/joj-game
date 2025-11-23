@@ -2,9 +2,11 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DatabaseError, OperationalError
 from sqlalchemy import inspect, text
 from sqlmodel import Session, SQLModel, create_engine
+
+from app import models  # noqa: F401  Ensure models are registered with SQLModel metadata
 
 from app.config import get_settings
 
@@ -88,17 +90,48 @@ def _apply_migrations() -> None:
     if "expires_at" not in token_columns:
         with engine.begin() as connection:
             connection.execute(
+                text("ALTER TABLE token ADD COLUMN expires_at DATETIME")
+            )
+        # Populate existing rows with a 12-hour expiry to match the application default
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE token "
+                    "SET expires_at = datetime('now', '+12 hours') "
+                    "WHERE expires_at IS NULL"
+                )
+            )
+    if "revoked_at" not in token_columns:
+        with engine.begin() as connection:
+            connection.execute(
                 text(
                     "ALTER TABLE token "
-                    "ADD COLUMN expires_at DATETIME NOT NULL DEFAULT (datetime('now', '+12 hours'))"
+                    "ADD COLUMN revoked_at DATETIME"
                 )
             )
     _ensure_card_resource_columns()
 
 
 def init_db() -> None:
-    SQLModel.metadata.create_all(engine)
+    try:
+        SQLModel.metadata.create_all(engine)
+    except DatabaseError as error:
+        if not _recreate_malformed_deck(error):
+            raise
     _migrate_password_hash_column()
+
+
+def _recreate_malformed_deck(error: DatabaseError) -> bool:
+    message = str(getattr(error, "orig", error)).lower()
+    if "malformed database schema (deck)" not in message:
+        return False
+
+    db_path = Path(get_settings().database_url)
+    if db_path.exists():
+        db_path.unlink()
+
+    SQLModel.metadata.create_all(engine)
+    return True
 
 
 def _migrate_password_hash_column() -> None:
@@ -107,8 +140,27 @@ def _migrate_password_hash_column() -> None:
     if "password_hash" not in columns:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE user ADD COLUMN password_hash VARCHAR"))
+    if "role" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE user ADD COLUMN role VARCHAR NOT NULL DEFAULT 'user'")
+            )
+    _normalize_user_roles()
     _add_missing_max_spectators_column()
     _apply_migrations()
+
+
+def _normalize_user_roles() -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE user SET role = lower(trim(role)) "
+                "WHERE role IS NOT NULL AND role != lower(trim(role))"
+            )
+        )
+        connection.execute(
+            text("UPDATE user SET role = 'user' WHERE role IS NULL OR trim(role) = ''")
+        )
 
 
 @contextmanager

@@ -1,0 +1,100 @@
+├── .github
+│   └── copilot-instructions.md
+├── .gitignore
+├── .vscode
+│   └── settings.json
+├── ADMIN_DELIVERY_SUMMARY.md
+├── ADMIN_DOCS_INDEX.md
+├── ADMIN_INTERFACE_ANALYSIS.md
+├── ADMIN_OVERVIEW.md
+├── ADMIN_REFACTORING_GUIDE.md
+├── ADMIN_SUMMARY.md
+├── ANALYSIS_DELIVERY_SUMMARY.md
+├── FRONTEND_ANALYSIS.md
+├── FRONTEND_DOCS_INDEX.md
+├── FRONTEND_REFACTORING_GUIDE.md
+├── FRONTEND_SUMMARY.md
+├── LICENSE
+├── README.md
+├── admin-web
+│   ├── README.md
+│   ├── admin.html
+│   ├── main.js
+│   ├── management.html
+│   └── styles.css
+├── cards
+│   ├── README.md
+│   ├── cards_1.txt
+│   ├── sample-deck-lyap.json
+│   └── sample-deck.json
+├── client-android
+│   └── README.md
+├── client-ios
+│   └── README.md
+├── client-macos
+│   └── README.md
+├── client-unix
+│   └── README.md
+├── client-web
+│   ├── README.md
+│   ├── index.html
+│   ├── main.html
+│   ├── main.js
+│   └── styles.css
+├── client-windows
+│   ├── README.md
+│   ├── auth
+│   │   └── credentials.sample.json
+│   └── src
+│       └── JojGame.Client.Windows
+│           ├── App.xaml
+│           ├── App.xaml.cs
+│           ├── JojGame.Client.Windows.csproj
+│           ├── Models
+│           │   ├── AuthenticationResult.cs
+│           │   └── CredentialRecord.cs
+│           ├── Plugins
+│           │   ├── FileAuthenticationPlugin.cs
+│           │   └── IAuthenticationPlugin.cs
+│           ├── Services
+│           │   └── AuthService.cs
+│           ├── Settings
+│           │   └── AppSettings.cs
+│           ├── Utilities
+│           │   └── PasswordHasher.cs
+│           ├── Views
+│           │   ├── LoginWindow.xaml
+│           │   ├── LoginWindow.xaml.cs
+│           │   ├── MainWindow.xaml
+│           │   └── MainWindow.xaml.cs
+│           └── appsettings.json
+├── manual.txt
+├── oria.py
+├── project_tree.txt
+├── server
+│   ├── README.md
+│   ├── app
+│   │   ├── __init__.py
+│   │   ├── config.py
+│   │   ├── db.py
+│   │   ├── dependencies.py
+│   │   ├── loaders.py
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   ├── repository.py
+│   │   ├── routes
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── auth.py
+│   │   │   ├── cards.py
+│   │   │   └── rooms.py
+│   │   ├── test_integration.py
+│   │   └── test_models_unit.py
+│   ├── config
+│   │   └── settings.yaml
+│   ├── data
+│   │   └── app.db
+│   ├── error-log.txt
+│   └── requirements.txt
+├── strat-server.bat
+└── structure.md

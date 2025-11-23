@@ -7,11 +7,13 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="admin">
+    <a class="skip-link" href="#statusArea">Skip to status updates</a>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <header>
       <div class="header-main">
         <div>
-          <h1>Administrative tools</h1>
-          <p class="subtitle">
+          <h1 data-i18n="layout.admin.heading">Administrative tools</h1>
+          <p class="subtitle" data-i18n="layout.admin.subheading">
             Manage cards and decks with an admin token supplied by the server.
           </p>
         </div>
@@ -26,11 +28,45 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="index.html">Login</a>
-        <a href="main.html">Game</a>
-        <a href="management.html">Management</a>
-        <a href="admin.html" class="active">Admin</a>
+        <a href="../client-web/index.html" data-nav="login">LOGIN</a>
+        <a href="../client-web/main.html" data-nav="game" data-requires-auth>GAME</a>
+        <a href="management.html" data-nav="management" data-requires-auth>MANAGEMENT</a>
+        <a href="admin.html" class="active" data-nav="admin" data-requires-admin>ADMIN</a>
       </nav>
+      <div id="accessBanner" class="banner warning" hidden>
+        <div>
+          <p id="accessBannerMessage" data-i18n="messages.accessWarning">
+            Admin access required. Sign in or supply an admin token to continue.
+          </p>
+        </div>
+        <div class="banner-actions">
+          <button id="accessBannerLogin" type="button" class="ghost" data-i18n="messages.bannerLoginCta">
+            Go to login
+          </button>
+          <button id="accessBannerDismiss" type="button" class="ghost" data-i18n="messages.bannerDismiss">
+            Dismiss
+          </button>
+        </div>
+      </div>
+
+      <div class="session-bar" role="status" aria-live="polite">
+        <div class="session-chip" id="sessionApiChip">
+          <span class="chip-label" data-i18n="session.apiLabel">API base</span>
+          <span class="chip-value"></span>
+        </div>
+        <div class="session-chip" id="sessionUserChip">
+          <span class="chip-label" data-i18n="session.userLabel">User</span>
+          <span class="chip-value" data-i18n="session.userGuest">Guest (not signed in)</span>
+        </div>
+        <div class="session-chip" id="sessionRoomChip">
+          <span class="chip-label" data-i18n="session.roomLabel">Room</span>
+          <span class="chip-value" data-i18n="session.roomNone">Not joined</span>
+        </div>
+        <div class="session-chip" id="sessionRoleChip">
+          <span class="chip-label" data-i18n="session.roleLabel">Role</span>
+          <span class="chip-value" data-i18n="session.roleGuest">Guest</span>
+        </div>
+      </div>
     </header>
 
     <section class="card">
@@ -48,34 +84,67 @@
       <div class="card">
         <div class="card-header">
           <h2 data-i18n="admin.heading">Admin access</h2>
-          <p class="muted">
-            Administrative controls to seed, inspect, and maintain core game
-            assets.
+          <p class="muted" data-i18n="admin.roleHint">
+            Sign in with an admin account to unlock these controls.
           </p>
         </div>
         <label class="field">
-          <span data-i18n="admin.token">Admin token</span>
+          <span data-i18n="admin.tokenLabel">Admin token</span>
           <input
             id="adminToken"
-            name="adminToken"
             type="password"
             autocomplete="off"
-            placeholder="Paste the server ADMIN_TOKEN value"
             data-i18n-placeholder="admin.tokenPlaceholder"
+            placeholder="Paste the server ADMIN_TOKEN value"
           />
         </label>
-        <p class="hint" data-i18n="admin.hint1">
-          Needed for the /admin API. Stored only in this page during your session.
+        <p class="hint" data-i18n="admin.tokenHint">
+          Paste the ADMIN_TOKEN from your server configuration to bootstrap admin actions without an admin account.
         </p>
-        <p class="hint" data-i18n="admin.hint2">Admin tools appear once a token is provided.</p>
+        <div class="pill warning inline-pill" id="adminTokenWarning" aria-live="polite">
+          <span data-i18n="admin.tokenWarning">
+            Admin tokens are sensitive. Stored only for this session and cleared after inactivity.
+          </span>
+          <button id="clearAdminToken" class="ghost" type="button" data-i18n="admin.clearToken">
+            Clear token
+          </button>
+        </div>
+        <div class="field-error" id="adminTokenError" aria-live="polite"></div>
+        <div id="adminTokenStatus" class="pill muted" aria-live="polite"></div>
         <div class="actions">
           <button id="refreshAdminData" type="button" data-i18n="admin.loadData">
-            Load cards & decks
+            Load admin data
           </button>
         </div>
       </div>
 
       <section class="grid">
+        <article class="card" data-admin-only id="usersSection">
+          <div class="card-header">
+            <h2 data-i18n="users.heading">Users</h2>
+            <div class="actions">
+              <button id="refreshUsers" type="button" data-i18n="users.refresh">Refresh</button>
+            </div>
+          </div>
+          <p class="muted" data-i18n="users.hint">
+            Review users, assign roles, or remove accounts.
+          </p>
+          <ul id="usersList" class="list"></ul>
+        </article>
+
+        <article class="card" data-admin-only id="roomsAdminSection">
+          <div class="card-header">
+            <h2 data-i18n="rooms.adminHeading">Rooms</h2>
+            <div class="actions">
+              <button id="refreshAdminRooms" type="button" data-i18n="rooms.refresh">Refresh</button>
+            </div>
+          </div>
+          <p class="muted" data-i18n="rooms.adminHint">
+            Inspect active rooms and remove stale ones.
+          </p>
+          <ul id="adminRoomsList" class="list"></ul>
+        </article>
+
         <article class="card" data-admin-only id="cardsSection">
           <div class="card-header">
             <h2 data-i18n="cards.heading">Cards</h2>
@@ -170,7 +239,11 @@
                 data-i18n-placeholder="cards.form.technologyPlaceholder"
               />
             </label>
-            <button type="submit" data-i18n="cards.form.submit">Create card</button>
+            <div class="field-error" id="cardFormError" aria-live="polite"></div>
+            <div class="actions">
+              <button type="submit" data-i18n="cards.form.submit">Create card</button>
+              <button type="button" id="resetCardForm" class="ghost">Reset</button>
+            </div>
           </form>
           <ul id="cardsList" class="list"></ul>
         </article>
@@ -214,8 +287,15 @@
                 data-i18n-placeholder="decks.form.cardIdsPlaceholder"
               />
             </label>
-            <button type="submit" data-i18n="decks.form.submit">Create deck</button>
+            <div class="field-error" id="deckFormError" aria-live="polite"></div>
+            <div class="actions">
+              <button type="submit" data-i18n="decks.form.submit">Create deck</button>
+              <button type="button" id="resetDeckForm" class="ghost" data-i18n="decks.form.reset">
+                Reset
+              </button>
+            </div>
           </form>
+          <div class="pill info" id="deckEditStatus" hidden aria-live="polite"></div>
           <div class="stack">
             <label class="field">
               <span data-i18n="decks.import.label">Import deck JSON</span>
@@ -230,9 +310,17 @@
             <p class="hint" data-i18n="decks.import.hint">
               Paste deck export JSON to recreate decks and cards.
             </p>
-            <button id="importDeck" type="button" data-i18n="decks.import.submit">
-              Import JSON
-            </button>
+            <label class="field">
+              <span data-i18n="decks.import.targetLabel">Target deck (optional)</span>
+              <select id="deckImportTarget">
+                <option value="" data-i18n="decks.import.targetNew">Create new deck</option>
+              </select>
+            </label>
+            <p class="hint" data-i18n="decks.import.targetHint">
+              Choose a deck to overwrite with this import, or leave empty to create a new deck.
+            </p>
+            <div class="field-error" id="deckImportError" aria-live="polite"></div>
+            <button id="importDeck" type="button" data-i18n="decks.import.submit">Import JSON</button>
           </div>
           <ul id="decksList" class="list"></ul>
         </article>
@@ -241,8 +329,41 @@
 
     <section class="card">
       <h2 data-i18n="status.heading">Status</h2>
-      <pre id="statusArea" class="status"></pre>
+      <pre
+        id="statusArea"
+        class="status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+      ></pre>
     </section>
+
+    <div
+      id="confirmDialog"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirmTitle"
+      hidden
+    >
+      <div class="modal-content">
+        <h3 id="confirmTitle" data-i18n="messages.confirmTitle">Confirm action</h3>
+        <p id="confirmMessage"></p>
+        <div class="modal-actions">
+          <button
+            id="confirmCancel"
+            type="button"
+            class="ghost"
+            data-i18n="messages.cancelAction"
+          >
+            Cancel
+          </button>
+          <button id="confirmAccept" type="button" data-i18n="messages.confirmAction">
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script src="main.js"></script>
   </body>
