@@ -4,11 +4,20 @@ const STORAGE_KEYS = {
   apiBase: "joj-api-base",
   roomCode: "joj-room-code",
   adminToken: "joj-admin-token",
+  deckDraft: "joj-deck-draft",
 };
 
 const LANGUAGE_STORAGE_KEY = "joj-language";
 const ADMIN_TOKEN_IDLE_MS = 2 * 60 * 60 * 1000;
 const ADMIN_IDLE_CHECK_MS = 60 * 1000;
+const REQUEST_DEBOUNCE_MS = 250;
+
+const ROUTES = {
+  login: "../client-web/index.html",
+  game: "../client-web/main.html",
+  management: "management.html",
+  admin: "admin.html",
+};
 
 const TRANSLATIONS = {
   en: {
@@ -634,6 +643,8 @@ let decksCache = [];
 let deckEditId = null;
 let handCards = [];
 let workspaceCards = [];
+let deckDraft = null;
+let usersCache = [];
 let adminTokenIdleTimer = null;
 let adminLastActivityAt = null;
 let adminStatus = { isActive: false, isChecking: false };
@@ -679,6 +690,123 @@ function formatTranslation(template, vars = {}) {
   });
 }
 
+const debounceTimers = new Map();
+const inflightOperations = new Map();
+
+function runDebouncedOperation(key, fn, delay = REQUEST_DEBOUNCE_MS) {
+  return new Promise((resolve, reject) => {
+    if (debounceTimers.has(key)) {
+      clearTimeout(debounceTimers.get(key));
+    }
+    const timer = setTimeout(async () => {
+      debounceTimers.delete(key);
+      if (inflightOperations.has(key)) {
+        try {
+          const existing = await inflightOperations.get(key);
+          resolve(existing);
+        } catch (error) {
+          reject(error);
+        }
+        return;
+      }
+
+      const promise = Promise.resolve().then(fn);
+      inflightOperations.set(key, promise);
+      try {
+        const result = await promise;
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      } finally {
+        inflightOperations.delete(key);
+      }
+    }, delay);
+
+    debounceTimers.set(key, timer);
+  });
+}
+
+function toggleLoading(target, isLoading) {
+  if (!target) return;
+  target.classList.toggle("is-loading", isLoading);
+  target.setAttribute("aria-busy", String(isLoading));
+  if (isLoading && "disabled" in target) {
+    target.dataset.prevDisabled = target.disabled;
+    target.disabled = true;
+  } else if (!isLoading && "disabled" in target && target.dataset.prevDisabled !== undefined) {
+    target.disabled = target.dataset.prevDisabled === "true";
+    delete target.dataset.prevDisabled;
+  }
+}
+
+function markBusy(targets, isLoading) {
+  (Array.isArray(targets) ? targets : [targets]).forEach((target) =>
+    toggleLoading(target, isLoading)
+  );
+}
+
+function runWithDebounce(key, uiTargets, fn) {
+  return runDebouncedOperation(key, async () => {
+    markBusy(uiTargets, true);
+    try {
+      return await fn();
+    } finally {
+      markBusy(uiTargets, false);
+    }
+  });
+}
+
+function normalizeErrorMessage(error, fallbackKey = null) {
+  if (error instanceof TypeError) {
+    return `${t("server.apiBase")}: ${error.message}`;
+  }
+  if (error?.message) {
+    return error.message;
+  }
+  if (fallbackKey) {
+    return t(fallbackKey);
+  }
+  return t("messages.ready");
+}
+
+function setFieldError(target, message = "") {
+  if (!target) return;
+  target.textContent = message;
+}
+
+function clearFieldErrors(...targets) {
+  targets.filter(Boolean).forEach((target) => setFieldError(target, ""));
+}
+
+function handleOperationError(contextKey, error, errorTarget = null) {
+  const message = normalizeErrorMessage(error);
+  if (errorTarget) {
+    setFieldError(errorTarget, message);
+  }
+  log(`[${contextKey}] ${message}`, true);
+}
+
+const validators = {
+  room({ name, maxPlayers, maxSpectators }) {
+    if (!name) return "messages.roomNameRequired";
+    if (!maxPlayers) return "messages.maxPlayersRequired";
+    if (maxSpectators === null || Number.isNaN(maxSpectators)) {
+      return "messages.spectatorsRequired";
+    }
+    return null;
+  },
+  card({ name, description, resources }) {
+    if (!name || !description) return "messages.cardFieldsRequired";
+    const invalidResource = validateResourceBounds(resources);
+    if (invalidResource) return "messages.cardRangeInvalid";
+    return null;
+  },
+  deck({ name }) {
+    if (!name) return "messages.deckNameRequired";
+    return null;
+  },
+};
+
 function t(key, vars = {}) {
   const template = resolveTranslation(key);
   return formatTranslation(template, vars);
@@ -714,6 +842,15 @@ function setLanguage(language) {
   syncAdminUi();
   syncDeckFormState();
   updateDeckImportTargets();
+}
+
+function applyNavRoutes() {
+  document.querySelectorAll(".nav [data-nav]").forEach((link) => {
+    const routeKey = link.dataset.nav;
+    if (routeKey && ROUTES[routeKey]) {
+      link.setAttribute("href", ROUTES[routeKey]);
+    }
+  });
 }
 
 function syncNavLinks() {
@@ -761,11 +898,6 @@ function log(message, isError = false) {
   } else {
     console[isError ? "error" : "log"](line);
   }
-}
-
-function setFieldError(target, message = "") {
-  if (!target) return;
-  target.textContent = message;
 }
 
 function showAccessBanner(messageKey) {
@@ -934,7 +1066,7 @@ function requireAdminAccess(showMessage = true) {
 }
 
 function redirectToLogin() {
-  window.location.href = "../client-web/index.html";
+  window.location.href = ROUTES.login;
 }
 
 function enforceRestrictedPageAccess() {
@@ -1705,6 +1837,43 @@ function syncDeckFormState() {
   }
 }
 
+function persistDeckDraftFromForm() {
+  if (!deckForm) return;
+  deckDraft = {
+    id: deckEditId,
+    name: document.getElementById("deckName")?.value || "",
+    description: document.getElementById("deckDescription")?.value || "",
+    cardIds: document.getElementById("deckCardIds")?.value || "",
+  };
+  sessionStorage.setItem(STORAGE_KEYS.deckDraft, JSON.stringify(deckDraft));
+}
+
+function restoreDeckDraft() {
+  if (!deckForm) return;
+  const raw = sessionStorage.getItem(STORAGE_KEYS.deckDraft);
+  if (!raw) return;
+  try {
+    deckDraft = JSON.parse(raw);
+  } catch (error) {
+    sessionStorage.removeItem(STORAGE_KEYS.deckDraft);
+    return;
+  }
+  if (!deckDraft) return;
+  if (deckDraft.id) {
+    deckEditId = deckDraft.id;
+    deckForm.dataset.editing = String(deckEditId);
+  }
+  document.getElementById("deckName").value = deckDraft.name || "";
+  document.getElementById("deckDescription").value = deckDraft.description || "";
+  document.getElementById("deckCardIds").value = deckDraft.cardIds || "";
+  syncDeckFormState();
+}
+
+function clearDeckDraft() {
+  deckDraft = null;
+  sessionStorage.removeItem(STORAGE_KEYS.deckDraft);
+}
+
 function startDeckEdit(deck) {
   if (!deckForm) return;
   deckEditId = deck.id;
@@ -1714,6 +1883,7 @@ function startDeckEdit(deck) {
   document.getElementById("deckCardIds").value = (deck.card_ids || []).join(",");
   syncDeckFormState();
   setFieldError(deckFormError, "");
+  persistDeckDraftFromForm();
   deckForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1723,54 +1893,59 @@ function clearDeckEdit() {
     delete deckForm.dataset.editing;
     deckForm.reset();
   }
+  clearDeckDraft();
   setFieldError(deckFormError, "");
   syncDeckFormState();
 }
 
 async function loadCards() {
-  if (!cardsList) return;
-  if (!requireAdminAccess()) return;
-  try {
-    const headers = adminHeaders();
-    if (!headers) return;
-    const response = await fetch(apiUrl("/admin/cards"), {
-      headers,
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleAuthFailure();
+  return runWithDebounce("loadCards", [cardsList, refreshCardsButton], async () => {
+    if (!cardsList) return;
+    if (!requireAdminAccess()) return;
+    try {
+      const headers = adminHeaders();
+      if (!headers) return;
+      const response = await fetch(apiUrl("/admin/cards"), {
+        headers,
+      });
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleAuthFailure();
+        }
+        throw new Error(t("messages.unableLoadCards", { status: response.status }));
       }
-      throw new Error(t("messages.unableLoadCards", { status: response.status }));
+      const cards = await response.json();
+      renderCards(cards);
+      log(t("messages.cardsLoaded", { count: cards.length }));
+    } catch (error) {
+      handleOperationError("loadCards", error);
     }
-    const cards = await response.json();
-    renderCards(cards);
-    log(t("messages.cardsLoaded", { count: cards.length }));
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
 async function loadDecks() {
-  if (!decksList) return;
-  if (!requireAdminAccess()) return;
-  try {
-    const headers = adminHeaders();
-    if (!headers) return;
-    const response = await fetch(apiUrl("/admin/decks"), {
-      headers,
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleAuthFailure();
+  return runWithDebounce("loadDecks", [decksList, refreshDecksButton], async () => {
+    if (!decksList) return;
+    if (!requireAdminAccess()) return;
+    try {
+      const headers = adminHeaders();
+      if (!headers) return;
+      const response = await fetch(apiUrl("/admin/decks"), {
+        headers,
+      });
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleAuthFailure();
+        }
+        throw new Error(t("messages.unableLoadDecks", { status: response.status }));
       }
-      throw new Error(t("messages.unableLoadDecks", { status: response.status }));
+      const decks = await response.json();
+      renderDecks(decks);
+      log(t("messages.decksLoaded", { count: decks.length }));
+    } catch (error) {
+      handleOperationError("loadDecks", error);
     }
-    const decks = await response.json();
-    renderDecks(decks);
-    log(t("messages.decksLoaded", { count: decks.length }));
-  } catch (error) {
-    log(error.message, true);
-  }
+  });
 }
 
 function renderUsers(users) {
@@ -2368,6 +2543,7 @@ function wireEvents() {
     refreshAdminRoomsButton.addEventListener("click", loadAdminRooms);
   if (cardForm) cardForm.addEventListener("submit", createCard);
   if (deckForm) deckForm.addEventListener("submit", submitDeck);
+  if (deckForm) deckForm.addEventListener("input", persistDeckDraftFromForm);
   if (resetCardFormButton)
     resetCardFormButton.addEventListener("click", () => {
       cardForm?.reset();
@@ -2431,6 +2607,8 @@ function wireEvents() {
 persistApiBase();
 persistAdminToken();
 setLanguage(currentLanguage);
+applyNavRoutes();
+restoreDeckDraft();
 wireEvents();
 setUserInfo();
 restoreSession();
