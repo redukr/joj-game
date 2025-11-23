@@ -133,18 +133,18 @@ class Repository:
                 replacement_map[original_id] = card.id
 
         deck_payload = payload.deck
+        original_card_ids = list(deck_payload.card_ids or [])
+
+        if original_card_ids:
+            for original_id, new_id in zip(original_card_ids, new_card_ids):
+                replacement_map.setdefault(original_id, new_id)
 
         if new_card_ids:
-            original_card_ids = list(deck_payload.card_ids or [])
             card_ids = list(original_card_ids)
             if card_ids:
                 card_ids = [replacement_map.get(cid, cid) for cid in card_ids]
-                if len(new_card_ids) > len(set(original_card_ids)):
-                    extra_new_ids = [
-                        new_id
-                        for old_id, new_id in replacement_map.items()
-                        if old_id not in original_card_ids
-                    ]
+                if len(new_card_ids) > len(original_card_ids):
+                    extra_new_ids = new_card_ids[len(original_card_ids) :]
                     card_ids.extend(extra_new_ids)
             else:
                 card_ids = new_card_ids
