@@ -1,10 +1,8 @@
 import importlib
-import os
-from pathlib import Path
 
 import pytest
 
-pytest.importorskip("httpx")
+pytest.importorskip("httpx", reason="httpx is required for TestClient")
 from fastapi.testclient import TestClient
 
 
@@ -81,3 +79,29 @@ def test_guest_room_flow_and_admin_exports(client):
     assert exported["deck"]["name"] == deck_payload["name"]
     assert exported["deck"]["card_ids"] == [card_id]
     assert exported["cards"][0]["id"] == card_id
+
+
+def test_admin_card_validation(client):
+    admin_headers = {"X-Admin-Token": "test-admin-token"}
+    bad_payload = {
+        "name": "Bad Bounds",
+        "description": "Should fail",
+        "time": 20,
+        "reputation": 0,
+        "discipline": 0,
+        "documents": 0,
+        "technology": 0,
+    }
+
+    response = client.post("/admin/cards", json=bad_payload, headers=admin_headers)
+
+    assert response.status_code == 422
+    assert "ensure this value is less than or equal to 10" in response.text
+
+
+def test_admin_token_verification_endpoint(client):
+    admin_headers = {"X-Admin-Token": "test-admin-token"}
+    response = client.get("/admin/verify", headers=admin_headers)
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}

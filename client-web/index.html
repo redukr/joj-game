@@ -8,6 +8,7 @@
   </head>
   <body data-page="auth" data-redirect-after-auth="main.html">
     <a class="skip-link" href="#statusArea">Skip to status updates</a>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <header>
       <div class="header-main">
         <div>
@@ -104,6 +105,7 @@
             data-i18n-placeholder="login.passwordPlaceholder"
           />
         </label>
+        <div class="field-error" id="loginFormError" aria-live="polite"></div>
         <div class="actions">
           <button id="registerGuest" type="button" data-i18n="login.register">
             Register

@@ -471,9 +471,11 @@ let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
 
 const pageName = document.body.dataset.page || "all";
 const statusArea = document.getElementById("statusArea");
+const toast = document.getElementById("toast");
 const apiBaseInput = document.getElementById("apiBase");
 const guestLoginForm = document.getElementById("guestLoginForm");
 const registerGuestButton = document.getElementById("registerGuest");
+const loginFormError = document.getElementById("loginFormError");
 const roomForm = document.getElementById("roomForm");
 const roomsTableBody = document.getElementById("roomsTableBody");
 const roomsTable = document.getElementById("roomsTable");
@@ -519,6 +521,7 @@ let handCards = [];
 let workspaceCards = [];
 let adminTokenStatus = { value: "", isValid: false, isChecking: false };
 let adminValidationTimer = null;
+let toastTimer = null;
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -705,6 +708,28 @@ function withBusyState(button, task) {
   return result;
 }
 
+function setFieldError(target, message = "") {
+  if (!target) return;
+  target.textContent = message;
+}
+
+function clearFieldErrors(...targets) {
+  targets.filter(Boolean).forEach((target) => setFieldError(target));
+}
+
+function showToast(message, isError = false) {
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.toggle("error", isError);
+  toast.hidden = false;
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+  }, 4000);
+}
+
 function setLanguage(language) {
   if (!TRANSLATIONS[language]) {
     return;
@@ -735,6 +760,9 @@ function log(message, isError = false) {
     }
   } else {
     console[isError ? "error" : "log"](line);
+  }
+  if (isError) {
+    showToast(message, true);
   }
 }
 
@@ -1174,12 +1202,17 @@ function getGuestCredentials() {
   }
   const displayName = displayNameInput.value.trim();
   const password = loginPasswordInput.value.trim();
+  clearFieldErrors(loginFormError);
   if (!displayName) {
-    log(t("messages.displayNameRequired"), true);
+    const message = t("messages.displayNameRequired");
+    setFieldError(loginFormError, message);
+    log(message, true);
     return null;
   }
   if (!password) {
-    log(t("messages.passwordRequired"), true);
+    const message = t("messages.passwordRequired");
+    setFieldError(loginFormError, message);
+    log(message, true);
     return null;
   }
   return { displayName, password };
@@ -1210,6 +1243,7 @@ async function authenticateGuest(successMessageKey, button) {
       }
 
       const data = await response.json();
+      clearFieldErrors(loginFormError);
       setAuthSession(data.access_token, data.user);
       log(t(successMessageKey, { name: currentUser.display_name }));
       setUserInfo();

@@ -293,6 +293,8 @@ const TRANSLATIONS = {
       bannerDismiss: "Dismiss",
       adminTokenCleared: "Admin token cleared.",
       adminTokenExpired: "Admin token cleared after inactivity.",
+      adminTokenValidated: "Admin token verified with the server.",
+      adminVerifyFailed: "Admin token could not be verified ({status}).",
     },
   },
   uk: {
@@ -570,6 +572,8 @@ const TRANSLATIONS = {
       cancelAction: "Скасувати",
       adminTokenCleared: "Адмін-токен очищено.",
       adminTokenExpired: "Адмін-токен очищено через бездіяльність.",
+      adminTokenValidated: "Адмін-токен підтверджено сервером.",
+      adminVerifyFailed: "Не вдалося перевірити адмін-токен ({status}).",
     },
   },
 };
@@ -578,6 +582,7 @@ let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
 
 const pageName = document.body.dataset.page || "all";
 const statusArea = document.getElementById("statusArea");
+const toast = document.getElementById("toast");
 const apiBaseInput = document.getElementById("apiBase");
 const accessBanner = document.getElementById("accessBanner");
 const accessBannerMessage = document.getElementById("accessBannerMessage");
@@ -649,6 +654,7 @@ let adminTokenIdleTimer = null;
 let adminLastActivityAt = null;
 let adminStatus = { isActive: false, isChecking: false };
 let sessionCheckComplete = false;
+let toastTimer = null;
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -881,6 +887,19 @@ function syncNavLinks() {
   enforceRestrictedPageAccess();
 }
 
+function showToast(message, isError = false) {
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.toggle("error", isError);
+  toast.hidden = false;
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+  }, 4000);
+}
+
 function log(message, isError = false) {
   const prefix = new Date().toLocaleTimeString();
   const line = `[${prefix}] ${message}`;
@@ -897,6 +916,9 @@ function log(message, isError = false) {
     }
   } else {
     console[isError ? "error" : "log"](line);
+  }
+  if (isError) {
+    showToast(message, true);
   }
 }
 
@@ -975,9 +997,15 @@ function persistAdminToken() {
     adminTokenInput.value = savedToken;
     resetAdminTokenIdleTimer();
     localStorage.removeItem(STORAGE_KEYS.adminToken);
+    verifyAdminAccess();
   }
   adminTokenInput.addEventListener("input", () => {
     setAdminToken(adminTokenInput.value);
+  });
+  adminTokenInput.addEventListener("blur", () => {
+    if (getAdminToken()) {
+      verifyAdminAccess();
+    }
   });
 }
 
@@ -986,7 +1014,7 @@ function isAdmin() {
 }
 
 function hasAdminAccess() {
-  return Boolean(getAdminToken() || (authToken && isAdmin()));
+  return Boolean(getAdminToken() || (authToken && isAdmin()) || adminStatus.isActive);
 }
 
 function clearAdminTokenTimer() {
@@ -1048,6 +1076,7 @@ function setAdminToken(value, messageKey = null) {
     sessionStorage.removeItem(STORAGE_KEYS.adminToken);
     clearAdminTokenTimer();
     adminLastActivityAt = null;
+    adminStatus.isActive = false;
   }
   syncAdminUi();
   syncNavLinks();
@@ -1139,8 +1168,9 @@ function requireRoomMembership(showMessage = true) {
   return true;
 }
 
-function adminHeaders() {
-  if (!requireAdminAccess(false)) {
+function adminHeaders(options = {}) {
+  const { allowUnverified = false } = options;
+  if (!allowUnverified && !requireAdminAccess(false)) {
     setFieldError(adminTokenError, t("messages.adminRoleRequired"));
     return null;
   }
@@ -1158,8 +1188,45 @@ function adminHeaders() {
   return headers;
 }
 
+async function verifyAdminAccess() {
+  if (!getAdminToken() && !isAdmin()) {
+    adminStatus.isActive = false;
+    syncAdminUi();
+    return false;
+  }
+
+  const headers = adminHeaders({ allowUnverified: true });
+  if (!headers) return false;
+
+  adminStatus.isChecking = true;
+  syncAdminUi();
+  try {
+    const response = await fetch(apiUrl("/admin/verify"), {
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(t("messages.adminVerifyFailed", { status: response.status }));
+    }
+
+    adminStatus.isActive = true;
+    clearFieldErrors(adminTokenError);
+    const successMessage = t("messages.adminTokenValidated");
+    log(successMessage);
+    showToast(successMessage);
+    return true;
+  } catch (error) {
+    adminStatus.isActive = false;
+    handleOperationError("admin.verify", error, adminTokenError);
+    return false;
+  } finally {
+    adminStatus.isChecking = false;
+    syncAdminUi();
+  }
+}
+
 function syncAdminUi() {
-  const adminMode = isAdmin() || Boolean(getAdminToken());
+  const adminMode = isAdmin() || adminStatus.isActive;
   const adminBusy = adminStatus.isChecking;
   adminOnlySections.forEach((section) => {
     section.hidden = !adminMode;
@@ -2516,7 +2583,7 @@ async function importDeck() {
 }
 
 async function loadAdminData() {
-  if (!requireAdminAccess()) return;
+  if (!(await verifyAdminAccess())) return;
   adminStatus.isChecking = true;
   syncAdminUi();
   try {
