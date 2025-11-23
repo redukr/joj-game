@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
 };
 
 const LANGUAGE_STORAGE_KEY = "joj-language";
+const ADMIN_TOKEN_IDLE_MS = 15 * 60 * 1000;
 
 const TRANSLATIONS = {
   en: {
@@ -50,6 +51,9 @@ const TRANSLATIONS = {
       tokenPlaceholder: "Paste the server ADMIN_TOKEN value",
       tokenHint:
         "Paste the ADMIN_TOKEN from your server configuration to bootstrap admin actions without an admin account.",
+      tokenWarning:
+        "Admin tokens are sensitive. They are stored only for this session and will auto-clear after inactivity.",
+      clearToken: "Clear token",
       status: {
         idle: "Admin access required to load data.",
         checking: "Checking admin access...",
@@ -173,17 +177,26 @@ const TRANSLATIONS = {
         cardIds: "Card IDs (comma separated)",
         cardIdsPlaceholder: "1,2,3",
         submit: "Create deck",
+        update: "Save changes",
+        reset: "Reset",
+        cancelEdit: "Cancel edit",
       },
       listEmpty: "No decks yet. Create one above.",
       noDescription: "No description",
       noCards: "No cards assigned",
+      edit: "Edit",
       export: "Export JSON",
       import: {
         label: "Import deck JSON",
         placeholder: '{"deck": {"name": "Starter", "card_ids": []}, "cards": []}',
         hint: "Paste deck export JSON to recreate decks and cards.",
+        targetLabel: "Target deck (optional)",
+        targetNew: "Create new deck",
+        targetHint:
+          "Choose a deck to overwrite with this import, or leave empty to create a new deck.",
         submit: "Import JSON",
       },
+      editing: "Editing deck #{id}. Save or cancel to exit.",
       delete: "Delete",
     },
     users: {
@@ -223,6 +236,7 @@ const TRANSLATIONS = {
       unableLoadDecks: "Unable to load decks: {status}",
       createCardFailed: "Create card failed: {status} {detail}",
       createDeckFailed: "Create deck failed: {status} {detail}",
+      updateDeckFailed: "Update deck failed: {status} {detail}",
       deleteCardFailed: "Delete card failed: {status} {detail}",
       deleteDeckFailed: "Delete deck failed: {status} {detail}",
       exportDeckFailed: "Export failed: {status} {detail}",
@@ -230,17 +244,20 @@ const TRANSLATIONS = {
       cardCreated: 'Created card "{name}" (#{id}).',
       deckNameRequired: "Deck name is required.",
       deckCreated: 'Created deck "{name}" (#{id}).',
+      deckUpdated: 'Updated deck "{name}" (#{id}).',
       deleteCardConfirm: "Delete card #{id}?",
       deleteDeckConfirm: "Delete deck #{id}?",
       deletedCard: "Deleted card #{id}.",
       deletedDeck: "Deleted deck #{id}.",
       exportedDeck: "Exported deck #{id}:\n{payload}",
       deckImported: 'Imported deck "{name}" (#{id}).',
+      deckImportUpdated: 'Replaced deck "{name}" (#{id}) with imported data.',
       importDeckInvalid: "Provide valid deck JSON to import.",
       importDeckFailed: "Import failed: {status} {detail}",
       ready: "Ready. Set your API base URL, register or sign in, or manage data as an admin.",
       loginFailed: "Login failed: {status}",
       registrationSuccess: "Registered as {name}.",
+      loginRequired: "Please sign in to access this page.",
       adminRoleRequired:
         "Admin access required. Provide the ADMIN_TOKEN or sign in as an admin to continue.",
       unableLoadUsers: "Unable to load users: {status}",
@@ -254,6 +271,12 @@ const TRANSLATIONS = {
       deletedRoom: "Deleted room {code}.",
       deleteRoomFailed: "Delete room failed: {status} {detail}",
       adminDataLoaded: "Admin data refreshed.",
+      accessWarning:
+        "Admin access required. Provide the ADMIN_TOKEN or sign in as an admin to continue.",
+      bannerLoginCta: "Go to login",
+      bannerDismiss: "Dismiss",
+      adminTokenCleared: "Admin token cleared.",
+      adminTokenExpired: "Admin token cleared after inactivity.",
     },
   },
   uk: {
@@ -298,6 +321,9 @@ const TRANSLATIONS = {
       tokenPlaceholder: "Вставте значення ADMIN_TOKEN із сервера",
       tokenHint:
         "Вставте ADMIN_TOKEN із конфігурації сервера, щоб увімкнути адмін-дії без адмін-акаунта.",
+      tokenWarning:
+        "Адмін-токени чутливі. Зберігаються лише в цій сесії та очищаються після бездіяльності.",
+      clearToken: "Очистити токен",
       status: {
         idle: "Потрібен адмін-доступ для завантаження даних.",
         checking: "Перевіряємо адмін-доступ...",
@@ -421,17 +447,26 @@ const TRANSLATIONS = {
         cardIds: "ID карток (через кому)",
         cardIdsPlaceholder: "1,2,3",
         submit: "Створити колоду",
+        update: "Зберегти зміни",
+        reset: "Скинути",
+        cancelEdit: "Скасувати редагування",
       },
       listEmpty: "Колоди відсутні. Створіть одну вище.",
       noDescription: "Без опису",
       noCards: "Карт не призначено",
+      edit: "Редагувати",
       export: "Експорт JSON",
       import: {
         label: "Імпортувати колоду з JSON",
         placeholder: '{"deck": {"name": "Стартова", "card_ids": []}, "cards": []}',
         hint: "Вставте експортований JSON, щоб відновити колоди та карти.",
+        targetLabel: "Цільова колода (необов'язково)",
+        targetNew: "Створити нову колоду",
+        targetHint:
+          "Оберіть колоду, яку потрібно перезаписати, або залиште порожнім для створення нової.",
         submit: "Імпортувати JSON",
       },
+      editing: "Редагування колоди #{id}. Збережіть або скасуйте, щоб вийти.",
       delete: "Видалити",
     },
     users: {
@@ -482,14 +517,18 @@ const TRANSLATIONS = {
       deleteDeckConfirm: "Видалити колоду #{id}?",
       deletedCard: "Карту #{id} видалено.",
       deletedDeck: "Колоду #{id} видалено.",
-      exportedDeck: "Експорт колоди #{id}:\n{payload}",
-      deckImported: 'Імпортовано колоду "{name}" (#{id}).',
-      importDeckInvalid: "Додайте коректний JSON для імпорту.",
-      importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
-      ready:
-        "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
+        exportedDeck: "Експорт колоди #{id}:\n{payload}",
+        deckImported: 'Імпортовано колоду "{name}" (#{id}).',
+        deckImportUpdated: 'Колоду "{name}" (#{id}) перезаписано імпортом.',
+        importDeckInvalid: "Додайте коректний JSON для імпорту.",
+        importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
+        updateDeckFailed: "Не вдалося оновити колоду: {status} {detail}",
+        deckUpdated: 'Колоду "{name}" (#{id}) оновлено.',
+        ready:
+          "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте даними як адміністратор.",
       loginFailed: "Помилка входу: {status}",
       registrationSuccess: "Зареєстровано як {name}.",
+      loginRequired: "Увійдіть, щоб отримати доступ до цієї сторінки.",
       adminRoleRequired:
         "Потрібен адмін-доступ. Увійдіть як адміністратор або додайте ADMIN_TOKEN.",
       unableLoadUsers: "Не вдалося завантажити користувачів: {status}",
@@ -503,6 +542,12 @@ const TRANSLATIONS = {
       deletedRoom: "Кімнату {code} видалено.",
       deleteRoomFailed: "Не вдалося видалити кімнату: {status} {detail}",
       adminDataLoaded: "Адмін-дані оновлено.",
+      accessWarning:
+        "Потрібен адмін-доступ. Введіть ADMIN_TOKEN або увійдіть як адміністратор.",
+      bannerLoginCta: "Перейти до входу",
+      bannerDismiss: "Сховати",
+      adminTokenCleared: "Адмін-токен очищено.",
+      adminTokenExpired: "Адмін-токен очищено через бездіяльність.",
     },
   },
 };
@@ -512,6 +557,10 @@ let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
 const pageName = document.body.dataset.page || "all";
 const statusArea = document.getElementById("statusArea");
 const apiBaseInput = document.getElementById("apiBase");
+const accessBanner = document.getElementById("accessBanner");
+const accessBannerMessage = document.getElementById("accessBannerMessage");
+const accessBannerLogin = document.getElementById("accessBannerLogin");
+const accessBannerDismiss = document.getElementById("accessBannerDismiss");
 const guestLoginForm = document.getElementById("guestLoginForm");
 const registerGuestButton = document.getElementById("registerGuest");
 const roomForm = document.getElementById("roomForm");
@@ -525,12 +574,22 @@ const refreshUsersButton = document.getElementById("refreshUsers");
 const refreshAdminRoomsButton = document.getElementById("refreshAdminRooms");
 const adminStatusLabel = document.getElementById("adminTokenStatus");
 const adminTokenInput = document.getElementById("adminToken");
+const adminTokenWarning = document.getElementById("adminTokenWarning");
+const adminTokenError = document.getElementById("adminTokenError");
+const clearAdminTokenButton = document.getElementById("clearAdminToken");
 const cardForm = document.getElementById("cardForm");
+const cardFormError = document.getElementById("cardFormError");
+const resetCardFormButton = document.getElementById("resetCardForm");
 const deckForm = document.getElementById("deckForm");
+const deckFormError = document.getElementById("deckFormError");
+const resetDeckFormButton = document.getElementById("resetDeckForm");
 const deckImportPayload = document.getElementById("deckImportPayload");
+const deckImportTarget = document.getElementById("deckImportTarget");
+const deckImportError = document.getElementById("deckImportError");
 const importDeckButton = document.getElementById("importDeck");
 const cardsList = document.getElementById("cardsList");
 const decksList = document.getElementById("decksList");
+const deckEditStatus = document.getElementById("deckEditStatus");
 const usersList = document.getElementById("usersList");
 const adminRoomsList = document.getElementById("adminRoomsList");
 const adminOnlySections = document.querySelectorAll("[data-admin-only]");
@@ -554,9 +613,13 @@ let authToken = null;
 let currentUser = null;
 let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
 let deckCards = [];
+let decksCache = [];
+let deckEditId = null;
 let handCards = [];
 let workspaceCards = [];
+let adminTokenIdleTimer = null;
 let adminStatus = { isActive: false, isChecking: false };
+let sessionCheckComplete = false;
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -631,10 +694,13 @@ function setLanguage(language) {
   renderHand();
   renderWorkspace();
   syncAdminUi();
+  syncDeckFormState();
+  updateDeckImportTargets();
 }
 
 function syncNavLinks() {
   const isLoggedIn = Boolean(authToken && currentUser);
+  const canAccessAdmin = hasAdminAccess();
 
   if (navLoginLink) {
     navLoginLink.textContent = "LOGIN";
@@ -643,31 +709,56 @@ function syncNavLinks() {
 
   if (navGameLink) {
     navGameLink.textContent = "GAME";
-    navGameLink.hidden = !isLoggedIn;
+    navGameLink.setAttribute("aria-disabled", String(!isLoggedIn));
+    navGameLink.dataset.guardMessage = "messages.loginRequired";
   }
 
   if (navManagementLink) {
-    navManagementLink.hidden = true;
+    navManagementLink.setAttribute("aria-disabled", String(!isLoggedIn));
+    navManagementLink.dataset.guardMessage = "messages.loginRequired";
   }
 
   if (navAdminLink) {
-    navAdminLink.hidden = true;
+    navAdminLink.setAttribute("aria-disabled", String(!canAccessAdmin));
+    navAdminLink.dataset.guardMessage = "messages.accessWarning";
   }
+
+  enforceRestrictedPageAccess();
 }
 
 function log(message, isError = false) {
   const prefix = new Date().toLocaleTimeString();
   const line = `[${prefix}] ${message}`;
   if (statusArea) {
+    if (!statusArea.hasAttribute("tabindex")) {
+      statusArea.setAttribute("tabindex", "-1");
+    }
     statusArea.textContent = `${line}\n${statusArea.textContent}`.trim();
     statusArea.classList.toggle("error", isError);
     statusArea.setAttribute("aria-label", line);
     if (isError) {
       statusArea.scrollTop = 0;
+      statusArea.focus({ preventScroll: false });
     }
   } else {
     console[isError ? "error" : "log"](line);
   }
+}
+
+function setFieldError(target, message = "") {
+  if (!target) return;
+  target.textContent = message;
+}
+
+function showAccessBanner(messageKey) {
+  if (!accessBanner || !accessBannerMessage) return;
+  accessBannerMessage.textContent = t(messageKey);
+  accessBanner.hidden = false;
+}
+
+function hideAccessBanner() {
+  if (!accessBanner) return;
+  accessBanner.hidden = true;
 }
 
 function apiUrl(path) {
@@ -694,18 +785,17 @@ function getAdminToken() {
 
 function persistAdminToken() {
   if (!adminTokenInput) return;
-  const savedToken = localStorage.getItem(STORAGE_KEYS.adminToken);
+  const savedToken =
+    sessionStorage.getItem(STORAGE_KEYS.adminToken) ||
+    localStorage.getItem(STORAGE_KEYS.adminToken);
   if (savedToken) {
+    sessionStorage.setItem(STORAGE_KEYS.adminToken, savedToken);
     adminTokenInput.value = savedToken;
+    resetAdminTokenIdleTimer();
+    localStorage.removeItem(STORAGE_KEYS.adminToken);
   }
   adminTokenInput.addEventListener("input", () => {
-    const value = adminTokenInput.value.trim();
-    if (value) {
-      localStorage.setItem(STORAGE_KEYS.adminToken, value);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.adminToken);
-    }
-    syncAdminUi();
+    setAdminToken(adminTokenInput.value);
   });
 }
 
@@ -713,12 +803,83 @@ function isAdmin() {
   return currentUser?.role === "admin";
 }
 
+function hasAdminAccess() {
+  return Boolean(getAdminToken() || (authToken && isAdmin()));
+}
+
+function clearAdminTokenTimer() {
+  if (adminTokenIdleTimer) {
+    clearTimeout(adminTokenIdleTimer);
+    adminTokenIdleTimer = null;
+  }
+}
+
+function resetAdminTokenIdleTimer() {
+  clearAdminTokenTimer();
+  const token = getAdminToken();
+  if (!token) return;
+  adminTokenIdleTimer = setTimeout(() => {
+    clearAdminToken("messages.adminTokenExpired");
+  }, ADMIN_TOKEN_IDLE_MS);
+}
+
+function clearAdminToken(messageKey = null) {
+  const hadToken = Boolean(getAdminToken());
+  setAdminToken("");
+  if (hadToken && messageKey) {
+    log(t(messageKey));
+  }
+}
+
+function setAdminToken(value, messageKey = null) {
+  if (!adminTokenInput) return;
+  const trimmed = value?.trim() || "";
+  adminTokenInput.value = trimmed;
+  if (trimmed) {
+    sessionStorage.setItem(STORAGE_KEYS.adminToken, trimmed);
+    setFieldError(adminTokenError, "");
+    resetAdminTokenIdleTimer();
+  } else {
+    sessionStorage.removeItem(STORAGE_KEYS.adminToken);
+    clearAdminTokenTimer();
+  }
+  syncAdminUi();
+  syncNavLinks();
+  if (messageKey) {
+    log(t(messageKey));
+  }
+}
+
 function requireAdminAccess(showMessage = true) {
-  const allowed = Boolean((authToken && isAdmin()) || getAdminToken());
+  const allowed = hasAdminAccess();
   if (!allowed && showMessage) {
     log(t("messages.adminRoleRequired"), true);
+    setFieldError(adminTokenError, t("messages.adminRoleRequired"));
   }
   return allowed;
+}
+
+function redirectToLogin() {
+  window.location.href = "../client-web/index.html";
+}
+
+function enforceRestrictedPageAccess() {
+  if (!sessionCheckComplete) {
+    return true;
+  }
+  const isLoggedIn = Boolean(authToken && currentUser);
+  if (pageName === "management" && !isLoggedIn) {
+    log(t("messages.loginRequired"), true);
+    showAccessBanner("messages.loginRequired");
+    return false;
+  }
+  if (pageName === "admin" && !hasAdminAccess()) {
+    log(t("messages.adminRoleRequired"), true);
+    showAccessBanner("messages.accessWarning");
+    return false;
+  }
+  hideAccessBanner();
+  return true;
 }
 
 function setAuthSession(token, user) {
@@ -786,6 +947,7 @@ function adminHeaders() {
   if (authToken && isAdmin()) {
     headers.Authorization = `Bearer ${authToken}`;
   }
+  resetAdminTokenIdleTimer();
   return headers;
 }
 
@@ -1069,6 +1231,8 @@ async function restoreSession() {
       handleAuthFailure();
     }
   }
+  sessionCheckComplete = true;
+  enforceRestrictedPageAccess();
 }
 
 function getGuestCredentials() {
@@ -1358,6 +1522,9 @@ function renderCards(cards) {
 }
 
 function renderDecks(decks) {
+  decksCache = decks;
+  updateDeckImportTargets();
+
   decksList.innerHTML = "";
   if (!decks.length) {
     decksList.innerHTML = `<li class="muted">${t("decks.listEmpty")}</li>`;
@@ -1388,6 +1555,14 @@ function renderDecks(decks) {
     exportButton.textContent = t("decks.export");
     exportButton.addEventListener("click", () => exportDeck(deck.id));
     actions.appendChild(exportButton);
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "ghost";
+    editButton.textContent = t("decks.edit");
+    editButton.addEventListener("click", () => startDeckEdit(deck));
+    actions.appendChild(editButton);
+
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "ghost";
@@ -1401,6 +1576,80 @@ function renderDecks(decks) {
     item.appendChild(actions);
     decksList.appendChild(item);
   });
+}
+
+function updateDeckImportTargets() {
+  if (!deckImportTarget) return;
+  const previousValue = deckImportTarget.value;
+  deckImportTarget.innerHTML = "";
+
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = t("decks.import.targetNew");
+  deckImportTarget.appendChild(defaultOption);
+
+  decksCache.forEach((deck) => {
+    const option = document.createElement("option");
+    option.value = String(deck.id);
+    option.textContent = `${deck.name} (#${deck.id})`;
+    deckImportTarget.appendChild(option);
+  });
+
+  if (previousValue && decksCache.some((deck) => String(deck.id) === previousValue)) {
+    deckImportTarget.value = previousValue;
+  }
+}
+
+function syncDeckFormState() {
+  if (!deckForm) return;
+  const submitButton = deckForm.querySelector('button[type="submit"]');
+  if (submitButton) {
+    submitButton.textContent = deckEditId
+      ? t("decks.form.update")
+      : t("decks.form.submit");
+  }
+
+  if (resetDeckFormButton) {
+    resetDeckFormButton.textContent = deckEditId
+      ? t("decks.form.cancelEdit")
+      : t("decks.form.reset");
+  }
+
+  if (deckEditStatus) {
+    if (deckEditId) {
+      deckEditStatus.hidden = false;
+      deckEditStatus.textContent = t("decks.editing", { id: deckEditId });
+    } else {
+      deckEditStatus.hidden = true;
+      deckEditStatus.textContent = "";
+    }
+  }
+
+  if (deckForm) {
+    deckForm.classList.toggle("editing", Boolean(deckEditId));
+  }
+}
+
+function startDeckEdit(deck) {
+  if (!deckForm) return;
+  deckEditId = deck.id;
+  deckForm.dataset.editing = String(deck.id);
+  document.getElementById("deckName").value = deck.name || "";
+  document.getElementById("deckDescription").value = deck.description || "";
+  document.getElementById("deckCardIds").value = (deck.card_ids || []).join(",");
+  syncDeckFormState();
+  setFieldError(deckFormError, "");
+  deckForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearDeckEdit() {
+  deckEditId = null;
+  if (deckForm) {
+    delete deckForm.dataset.editing;
+    deckForm.reset();
+  }
+  setFieldError(deckFormError, "");
+  syncDeckFormState();
 }
 
 async function loadCards() {
@@ -1644,6 +1893,7 @@ async function deleteAdminRoom(roomCode) {
 
 async function createCard(event) {
   event.preventDefault();
+  setFieldError(cardFormError, "");
   const name = document.getElementById("cardName").value.trim();
   const description = document.getElementById("cardDescription").value.trim();
   const category = document.getElementById("cardCategory").value.trim();
@@ -1656,7 +1906,9 @@ async function createCard(event) {
     resourcePayload[key] = Number.isNaN(value) ? 0 : value;
   });
   if (!name || !description) {
-    log(t("messages.cardFieldsRequired"), true);
+    const message = t("messages.cardFieldsRequired");
+    setFieldError(cardFormError, message);
+    log(message, true);
     return;
   }
 
@@ -1682,8 +1934,10 @@ async function createCard(event) {
     const card = await response.json();
     log(t("messages.cardCreated", { name: card.name, id: card.id }));
     cardForm.reset();
+    setFieldError(cardFormError, "");
     await loadCards();
   } catch (error) {
+    setFieldError(cardFormError, error.message);
     log(error.message, true);
   }
 }
@@ -1698,20 +1952,27 @@ function parseCardIds(input) {
     .filter((num) => !Number.isNaN(num));
 }
 
-async function createDeck(event) {
+async function submitDeck(event) {
   event.preventDefault();
+  setFieldError(deckFormError, "");
   const name = document.getElementById("deckName").value.trim();
   const description = document.getElementById("deckDescription").value.trim();
   const cardIdsInput = document.getElementById("deckCardIds").value;
   const card_ids = parseCardIds(cardIdsInput);
   if (!name) {
-    log(t("messages.deckNameRequired"), true);
+    const message = t("messages.deckNameRequired");
+    setFieldError(deckFormError, message);
+    log(message, true);
     return;
   }
 
+  const isEdit = Boolean(deckEditId);
+  const endpoint = isEdit ? `/admin/decks/${deckEditId}` : "/admin/decks";
+  const method = isEdit ? "PUT" : "POST";
+
   try {
-    const response = await fetch(apiUrl("/admin/decks"), {
-      method: "POST",
+    const response = await fetch(apiUrl(endpoint), {
+      method,
       headers: adminHeaders(),
       body: JSON.stringify({ name, description: description || null, card_ids }),
     });
@@ -1719,15 +1980,30 @@ async function createDeck(event) {
     if (!response.ok) {
       const errText = await response.text();
       throw new Error(
-        t("messages.createDeckFailed", { status: response.status, detail: errText })
+        t(isEdit ? "messages.updateDeckFailed" : "messages.createDeckFailed", {
+          status: response.status,
+          detail: errText,
+        })
       );
     }
 
     const deck = await response.json();
-    log(t("messages.deckCreated", { name: deck.name, id: deck.id }));
-    deckForm.reset();
+    log(
+      t(isEdit ? "messages.deckUpdated" : "messages.deckCreated", {
+        name: deck.name,
+        id: deck.id,
+      })
+    );
+    if (!isEdit && deckForm) {
+      deckForm.reset();
+    }
+    setFieldError(deckFormError, "");
+    if (isEdit) {
+      clearDeckEdit();
+    }
     await loadDecks();
   } catch (error) {
+    setFieldError(deckFormError, error.message);
     log(error.message, true);
   }
 }
@@ -1772,6 +2048,9 @@ async function deleteDeck(deckId) {
       );
     }
     log(t("messages.deletedDeck", { id: deckId }));
+    if (deckEditId && Number(deckEditId) === Number(deckId)) {
+      clearDeckEdit();
+    }
     await loadDecks();
   } catch (error) {
     log(error.message, true);
@@ -1802,9 +2081,12 @@ async function exportDeck(deckId) {
 
 async function importDeck() {
   if (!deckImportPayload) return;
+  setFieldError(deckImportError, "");
   const raw = deckImportPayload.value.trim();
   if (!raw) {
-    log(t("messages.importDeckInvalid"), true);
+    const message = t("messages.importDeckInvalid");
+    setFieldError(deckImportError, message);
+    log(message, true);
     return;
   }
 
@@ -1817,7 +2099,11 @@ async function importDeck() {
   }
 
   try {
-    const response = await fetch(apiUrl("/admin/decks/import"), {
+    const targetId = deckImportTarget?.value || "";
+    const endpoint = targetId
+      ? `/admin/decks/${targetId}/import`
+      : "/admin/decks/import";
+    const response = await fetch(apiUrl(endpoint), {
       method: "POST",
       headers: adminHeaders(),
       body: JSON.stringify(payload),
@@ -1830,10 +2116,17 @@ async function importDeck() {
     }
 
     const deck = await response.json();
-    log(t("messages.deckImported", { name: deck.name, id: deck.id }));
+    log(
+      t(targetId ? "messages.deckImportUpdated" : "messages.deckImported", {
+        name: deck.name,
+        id: deck.id,
+      })
+    );
     deckImportPayload.value = "";
+    if (deckImportTarget) deckImportTarget.value = "";
     await loadDecks();
   } catch (error) {
+    setFieldError(deckImportError, error.message);
     log(error.message, true);
   }
 }
@@ -1865,7 +2158,16 @@ function wireEvents() {
   if (refreshAdminRoomsButton)
     refreshAdminRoomsButton.addEventListener("click", loadAdminRooms);
   if (cardForm) cardForm.addEventListener("submit", createCard);
-  if (deckForm) deckForm.addEventListener("submit", createDeck);
+  if (deckForm) deckForm.addEventListener("submit", submitDeck);
+  if (resetCardFormButton)
+    resetCardFormButton.addEventListener("click", () => {
+      cardForm?.reset();
+      setFieldError(cardFormError, "");
+    });
+  if (resetDeckFormButton)
+    resetDeckFormButton.addEventListener("click", () => {
+      clearDeckEdit();
+    });
   if (importDeckButton) importDeckButton.addEventListener("click", importDeck);
   if (drawCardButton) drawCardButton.addEventListener("click", drawFromDeck);
   if (resetGameplayButton)
@@ -1874,6 +2176,30 @@ function wireEvents() {
     languageSelector.addEventListener("change", (event) => {
       setLanguage(event.target.value);
     });
+  document.querySelectorAll(".nav [data-nav]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (link.getAttribute("aria-disabled") === "true") {
+        event.preventDefault();
+        const messageKey = link.dataset.guardMessage;
+        if (messageKey) {
+          showAccessBanner(messageKey);
+          log(t(messageKey), true);
+        }
+      }
+    });
+  });
+
+  if (accessBannerLogin)
+    accessBannerLogin.addEventListener("click", () => redirectToLogin());
+  if (accessBannerDismiss)
+    accessBannerDismiss.addEventListener("click", hideAccessBanner);
+  if (clearAdminTokenButton)
+    clearAdminTokenButton.addEventListener("click", () =>
+      clearAdminToken("messages.adminTokenCleared")
+    );
+  ["pointerdown", "keydown", "mousemove"].forEach((eventName) => {
+    document.addEventListener(eventName, resetAdminTokenIdleTimer, { passive: true });
+  });
 }
 
 persistApiBase();

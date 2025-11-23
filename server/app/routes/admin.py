@@ -80,6 +80,13 @@ def import_deck(payload: DeckImport, repo: Repository = Depends(get_repository))
     return repo.import_deck(payload)
 
 
+@router.post("/decks/{deck_id}/import", response_model=DeckRead)
+def import_deck_into_existing(
+    deck_id: int, payload: DeckImport, repo: Repository = Depends(get_repository)
+):
+    return repo.import_deck_into_existing(deck_id, payload)
+
+
 @router.get("/users", response_model=list[UserRead])
 def list_users(limit: int | None = None, offset: int | None = None, repo: Repository = Depends(get_repository)):
     settings = get_settings()

@@ -145,8 +145,22 @@ def _migrate_password_hash_column() -> None:
             connection.execute(
                 text("ALTER TABLE user ADD COLUMN role VARCHAR NOT NULL DEFAULT 'user'")
             )
+    _normalize_user_roles()
     _add_missing_max_spectators_column()
     _apply_migrations()
+
+
+def _normalize_user_roles() -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE user SET role = lower(trim(role)) "
+                "WHERE role IS NOT NULL AND role != lower(trim(role))"
+            )
+        )
+        connection.execute(
+            text("UPDATE user SET role = 'user' WHERE role IS NULL OR trim(role) = ''")
+        )
 
 
 @contextmanager

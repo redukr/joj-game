@@ -146,6 +146,34 @@ class Repository:
         }
 
     def import_deck(self, payload: DeckImport) -> DeckRead:
+        card_ids = self._prepare_import_card_ids(payload)
+
+        deck = Deck(
+            name=payload.deck.name,
+            description=payload.deck.description,
+            card_ids=card_ids,
+        )
+        self.session.add(deck)
+        self.session.flush()
+        self.session.refresh(deck)
+        return DeckRead.from_orm(deck)
+
+    def import_deck_into_existing(self, deck_id: int, payload: DeckImport) -> DeckRead:
+        deck = self.session.get(Deck, deck_id)
+        if not deck:
+            raise HTTPException(status_code=404, detail="Deck not found")
+
+        card_ids = self._prepare_import_card_ids(payload)
+
+        deck.name = payload.deck.name
+        deck.description = payload.deck.description
+        deck.card_ids = card_ids
+        self.session.add(deck)
+        self.session.flush()
+        self.session.refresh(deck)
+        return DeckRead.from_orm(deck)
+
+    def _prepare_import_card_ids(self, payload: DeckImport) -> list[int]:
         new_card_ids: list[int] = []
         for card_payload in payload.cards:
             card = Card.from_orm(card_payload)
@@ -178,15 +206,7 @@ class Repository:
             card_ids = list(deck_payload.card_ids or [])
             self._validate_cards_exist(card_ids)
 
-        deck = Deck(
-            name=deck_payload.name,
-            description=deck_payload.description,
-            card_ids=card_ids,
-        )
-        self.session.add(deck)
-        self.session.flush()
-        self.session.refresh(deck)
-        return DeckRead.from_orm(deck)
+        return card_ids
 
     # Auth helpers
     def _hash_password(self, password: str) -> str:
@@ -256,7 +276,7 @@ class Repository:
             provider=provider,
             display_name=display_name,
             password_hash=password_hash,
-            role=Role.USER,
+            role=Role.USER.value,
         )
         self.session.add(user)
         self.session.flush()
@@ -380,8 +400,8 @@ class Repository:
 
         if existing_user:
             needs_update = False
-            if existing_user.role != Role.ADMIN:
-                existing_user.role = Role.ADMIN
+            if existing_user.role != Role.ADMIN.value:
+                existing_user.role = Role.ADMIN.value
                 needs_update = True
             if not self._verify_password(password, existing_user.password_hash or ""):
                 existing_user.password_hash = desired_hash
@@ -397,7 +417,7 @@ class Repository:
             provider=Provider.GUEST,
             display_name=username,
             password_hash=desired_hash,
-            role=Role.ADMIN,
+            role=Role.ADMIN.value,
         )
         self.session.add(user)
         self.session.flush()
