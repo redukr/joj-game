@@ -116,6 +116,60 @@
                 data-i18n-placeholder="cards.form.categoryPlaceholder"
               />
             </label>
+            <div class="grid two-col">
+              <label class="field">
+                <span data-i18n="cards.form.time">Time</span>
+                <input
+                  id="cardTime"
+                  name="cardTime"
+                  type="number"
+                  value="0"
+                  data-i18n-placeholder="cards.form.timePlaceholder"
+                />
+              </label>
+              <label class="field">
+                <span data-i18n="cards.form.reputation">Reputation</span>
+                <input
+                  id="cardReputation"
+                  name="cardReputation"
+                  type="number"
+                  value="0"
+                  data-i18n-placeholder="cards.form.reputationPlaceholder"
+                />
+              </label>
+            </div>
+            <div class="grid two-col">
+              <label class="field">
+                <span data-i18n="cards.form.discipline">Discipline</span>
+                <input
+                  id="cardDiscipline"
+                  name="cardDiscipline"
+                  type="number"
+                  value="0"
+                  data-i18n-placeholder="cards.form.disciplinePlaceholder"
+                />
+              </label>
+              <label class="field">
+                <span data-i18n="cards.form.documents">Documents</span>
+                <input
+                  id="cardDocuments"
+                  name="cardDocuments"
+                  type="number"
+                  value="0"
+                  data-i18n-placeholder="cards.form.documentsPlaceholder"
+                />
+              </label>
+            </div>
+            <label class="field">
+              <span data-i18n="cards.form.technology">Technology</span>
+              <input
+                id="cardTechnology"
+                name="cardTechnology"
+                type="number"
+                value="0"
+                data-i18n-placeholder="cards.form.technologyPlaceholder"
+              />
+            </label>
             <button type="submit" data-i18n="cards.form.submit">Create card</button>
           </form>
           <ul id="cardsList" class="list"></ul>
@@ -162,6 +216,24 @@
             </label>
             <button type="submit" data-i18n="decks.form.submit">Create deck</button>
           </form>
+          <div class="stack">
+            <label class="field">
+              <span data-i18n="decks.import.label">Import deck JSON</span>
+              <textarea
+                id="deckImportPayload"
+                name="deckImportPayload"
+                rows="4"
+                placeholder='{"deck": {"name": "Starter", "card_ids": []}, "cards": []}'
+                data-i18n-placeholder="decks.import.placeholder"
+              ></textarea>
+            </label>
+            <p class="hint" data-i18n="decks.import.hint">
+              Paste deck export JSON to recreate decks and cards.
+            </p>
+            <button id="importDeck" type="button" data-i18n="decks.import.submit">
+              Import JSON
+            </button>
+          </div>
           <ul id="decksList" class="list"></ul>
         </article>
       </section>

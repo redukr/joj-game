@@ -13,6 +13,7 @@ from app.models import (
     CardRead,
     Deck,
     DeckBase,
+    DeckImport,
     DeckRead,
     LoginRequest,
     Provider,
@@ -117,6 +118,49 @@ class Repository:
             "cards": [CardRead.from_orm(card) for card in cards],
         }
 
+    def import_deck(self, payload: DeckImport) -> DeckRead:
+        new_card_ids: list[int] = []
+        for card_payload in payload.cards:
+            card = Card.from_orm(card_payload)
+            self.session.add(card)
+            self.session.flush()
+            self.session.refresh(card)
+            new_card_ids.append(card.id)
+
+        deck_payload = payload.deck
+
+        if new_card_ids:
+            card_ids = list(deck_payload.card_ids or [])
+            if card_ids:
+                unique_existing_ids: list[int] = []
+                for cid in card_ids:
+                    if cid not in unique_existing_ids:
+                        unique_existing_ids.append(cid)
+
+                replacement_map = {
+                    old_id: new_id
+                    for old_id, new_id in zip(unique_existing_ids, new_card_ids)
+                }
+                card_ids = [replacement_map.get(cid, cid) for cid in card_ids]
+
+                if len(new_card_ids) > len(unique_existing_ids):
+                    card_ids.extend(new_card_ids[len(unique_existing_ids) :])
+            else:
+                card_ids = new_card_ids
+        else:
+            card_ids = list(deck_payload.card_ids or [])
+            self._validate_cards_exist(card_ids)
+
+        deck = Deck(
+            name=deck_payload.name,
+            description=deck_payload.description,
+            card_ids=card_ids,
+        )
+        self.session.add(deck)
+        self.session.flush()
+        self.session.refresh(deck)
+        return DeckRead.from_orm(deck)
+
     # Auth helpers
     def _hash_password(self, password: str) -> str:
         return hashlib.sha256(password.encode("utf-8")).hexdigest()
@@ -210,7 +254,23 @@ class Repository:
                 player_count = amount
         return player_count, spectator_count
 
+    def _ensure_host_membership(self, room: Room) -> None:
+        if not room.host_user_id:
+            return
+        existing = self.session.get(RoomMembership, (room.code, room.host_user_id))
+        if existing:
+            return
+        membership = RoomMembership(
+            room_code=room.code,
+            user_id=room.host_user_id,
+            role="player",
+            joined_at=room.created_at,
+        )
+        self.session.add(membership)
+        self.session.flush()
+
     def _room_to_read(self, room: Room, current_user_id: str | None = None) -> RoomRead:
+        self._ensure_host_membership(room)
         player_count, spectator_count = self._membership_counts(room.code)
         is_joined = False
         if current_user_id:
@@ -261,6 +321,8 @@ class Repository:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
         if room.status != "active":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not joinable")
+
+        self._ensure_host_membership(room)
 
         existing = self.session.get(RoomMembership, (room_code, user_id))
         if existing:
