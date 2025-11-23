@@ -45,6 +45,24 @@ def _add_missing_max_spectators_column() -> None:
             message = str(getattr(error, "orig", error)).lower()
             if "duplicate column name" not in message:
                 raise
+
+
+def _ensure_card_resource_columns() -> None:
+    inspector = inspect(engine)
+    card_columns = {column_info["name"] for column_info in inspector.get_columns("card")}
+    resource_columns = {"time", "reputation", "discipline", "documents", "technology"}
+    missing = resource_columns - card_columns
+    if not missing:
+        return
+
+    for column_name in sorted(missing):
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE card "
+                    f"ADD COLUMN {column_name} INTEGER NOT NULL DEFAULT 0"
+                )
+            )
 def _apply_migrations() -> None:
     inspector = inspect(engine)
     room_columns = {column_info["name"] for column_info in inspector.get_columns("room")}
@@ -58,6 +76,16 @@ def _apply_migrations() -> None:
                 )
             )
 
+    if "status" not in room_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE room "
+                    "ADD COLUMN status VARCHAR NOT NULL DEFAULT 'active'"
+                )
+            )
+    _ensure_card_resource_columns()
+
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
@@ -67,11 +95,9 @@ def init_db() -> None:
 def _migrate_password_hash_column() -> None:
     inspector = inspect(engine)
     columns = {column["name"] for column in inspector.get_columns("user")}
-    if "password_hash" in columns:
-        return
-
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE user ADD COLUMN password_hash VARCHAR"))
+    if "password_hash" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE user ADD COLUMN password_hash VARCHAR"))
     _add_missing_max_spectators_column()
     _apply_migrations()
 

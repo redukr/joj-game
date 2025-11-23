@@ -19,6 +19,11 @@ class CardBase(SQLModel):
         ..., description="Card description (e.g., 'Втрачено репутацію через невдалий виступ')"
     )
     category: Optional[str] = Field(None, description="Card category (e.g., 'scandal')")
+    time: int = Field(0, description="Time effect for the card (e.g., +1 or -2)")
+    reputation: int = Field(0, description="Reputation effect for the card")
+    discipline: int = Field(0, description="Discipline effect for the card")
+    documents: int = Field(0, description="Documents effect for the card")
+    technology: int = Field(0, description="Technology effect for the card")
 
 
 class Card(CardBase, table=True):
@@ -47,6 +52,11 @@ class DeckRead(DeckBase):
 
     class Config:
         orm_mode = True
+
+
+class DeckImport(SQLModel):
+    deck: DeckBase
+    cards: List[CardBase] = Field(default_factory=list)
 
 
 class User(SQLModel, table=True):
@@ -98,6 +108,11 @@ class RoomCreate(SQLModel):
         ..., ge=0, le=10, description="Maximum spectators allowed (up to 10)"
     )
     visibility: str = Field("private", description="private or public")
+    status: str = Field("active", description="active or archived")
+
+
+class RoomJoin(SQLModel):
+    as_spectator: bool = False
 
 
 class Room(SQLModel, table=True):
@@ -107,6 +122,7 @@ class Room(SQLModel, table=True):
     max_players: int
     max_spectators: int
     visibility: str
+    status: str = Field(default="active")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -117,7 +133,19 @@ class RoomRead(SQLModel):
     max_players: int
     max_spectators: int
     visibility: str
+    status: str
+    player_count: int = 0
+    spectator_count: int = 0
+    is_joined: bool = False
+    is_joinable: bool = False
     created_at: datetime
 
     class Config:
         orm_mode = True
+
+
+class RoomMembership(SQLModel, table=True):
+    room_code: str = Field(foreign_key="room.code", primary_key=True)
+    user_id: str = Field(foreign_key="user.id", primary_key=True)
+    role: str = Field(default="player")
+    joined_at: datetime = Field(default_factory=datetime.utcnow)

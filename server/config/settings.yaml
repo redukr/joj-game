@@ -1,4 +1,4 @@
-admin_token: "changeme"
+admin_token: "redukr"
 allowed_oauth_providers:
   - apple
   - google

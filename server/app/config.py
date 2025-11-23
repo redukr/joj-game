@@ -25,7 +25,7 @@ def _file_settings_source(_: BaseSettings) -> dict[str, Any]:
 
 
 class Settings(BaseSettings):
-    admin_token: str = Field("changeme", env="ADMIN_TOKEN")
+    admin_token: str = Field("redukr", env="ADMIN_TOKEN")
     database_url: str = Field("./data/app.db", env="DATABASE_URL")
     allowed_oauth_providers: List[str] = Field(
         default_factory=lambda: ["apple", "google", "guest"], env="ALLOWED_OAUTH_PROVIDERS"

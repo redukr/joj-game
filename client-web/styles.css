@@ -146,6 +146,15 @@ button.ghost {
   background: #f8fafc;
 }
 
+.list li.active-room {
+  border-color: #2563eb;
+  background: #eef2ff;
+}
+
+.list li .pill {
+  margin-left: 0.5rem;
+}
+
 .item-actions {
   display: flex;
   gap: 0.5rem;
