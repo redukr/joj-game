@@ -75,6 +75,7 @@ const TRANSLATIONS = {
       },
       meta: {
         host: "Host",
+        name: "Name",
         code: "Code",
         players: "Players",
         spectators: "Spectators",
@@ -302,6 +303,7 @@ const TRANSLATIONS = {
       },
       meta: {
         host: "Хост",
+        name: "Назва",
         code: "Код",
         players: "Гравців",
         spectators: "Глядачів",
@@ -473,8 +475,10 @@ const apiBaseInput = document.getElementById("apiBase");
 const guestLoginForm = document.getElementById("guestLoginForm");
 const registerGuestButton = document.getElementById("registerGuest");
 const roomForm = document.getElementById("roomForm");
-const roomsList = document.getElementById("roomsList");
+const roomsTableBody = document.getElementById("roomsTableBody");
+const roomsTable = document.getElementById("roomsTable");
 const refreshRoomsButton = document.getElementById("refreshRooms");
+const roomFormError = document.getElementById("roomFormError");
 const userInfo = document.getElementById("userInfo");
 const sessionApiChip = document.getElementById("sessionApiChip");
 const sessionUserChip = document.getElementById("sessionUserChip");
@@ -732,6 +736,11 @@ function log(message, isError = false) {
   } else {
     console[isError ? "error" : "log"](line);
   }
+}
+
+function setRoomFormError(message) {
+  if (!roomFormError) return;
+  roomFormError.textContent = message || "";
 }
 
 function apiUrl(path) {
@@ -1228,7 +1237,7 @@ async function handleGuestRegistration(event) {
 }
 
 async function loadRooms(event) {
-  if (!roomsList) return;
+  if (!roomsTableBody) return;
   const button = event?.currentTarget || refreshRoomsButton;
   await withBusyState(button, async () => {
     try {
@@ -1257,30 +1266,24 @@ async function loadRooms(event) {
 }
 
 function renderRooms(rooms) {
-  if (!roomsList) return;
-  roomsList.innerHTML = "";
+  if (!roomsTableBody) return;
+  roomsTableBody.innerHTML = "";
   if (!rooms.length) {
-    roomsList.innerHTML = `<li class="muted">${t("rooms.list.empty")}</li>`;
+    const emptyRow = document.createElement("tr");
+    const emptyCell = document.createElement("td");
+    emptyCell.colSpan = 10;
+    emptyCell.className = "muted";
+    emptyCell.textContent = t("rooms.list.empty");
+    emptyRow.appendChild(emptyCell);
+    roomsTableBody.appendChild(emptyRow);
     return;
   }
 
   rooms.forEach((room) => {
-    const item = document.createElement("li");
+    const row = document.createElement("tr");
     if (room.code === currentRoomCode) {
-      item.classList.add("active-room");
+      row.classList.add("active-room");
     }
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = room.name;
-    if (room.code === currentRoomCode) {
-      const currentBadge = document.createElement("span");
-      currentBadge.className = "pill";
-      currentBadge.textContent = t("rooms.join.current");
-      title.appendChild(currentBadge);
-    }
-
-    const meta = document.createElement("div");
-    meta.className = "meta";
     const statusLabel = t(`rooms.status.${room.status}`);
     const joinableLabel =
       room.status !== "active"
@@ -1289,18 +1292,34 @@ function renderRooms(rooms) {
         ? t("rooms.join.joinable")
         : t("rooms.join.full");
     const created = new Date(room.created_at).toLocaleString();
-    const metaBits = [
-      `${t("rooms.meta.host")}: ${room.host_user_id}`,
-      `${t("rooms.meta.code")}: ${room.code}`,
-      `${t("rooms.meta.players")}: ${room.player_count}/${room.max_players}`,
-      `${t("rooms.meta.spectators")}: ${room.spectator_count}/${room.max_spectators}`,
-      `${t("rooms.meta.visibility")}: ${room.visibility}`,
-      `${t("rooms.meta.status")}: ${statusLabel}`,
-      `${t("rooms.meta.joinable")}: ${joinableLabel}`,
-      `${t("rooms.meta.created")}: ${created}`,
-    ];
-    meta.textContent = metaBits.join(" | ");
 
+    const cells = [
+      room.code,
+      room.name,
+      room.host_user_id,
+      `${room.player_count}/${room.max_players}`,
+      `${room.spectator_count}/${room.max_spectators}`,
+      room.visibility,
+      statusLabel,
+      joinableLabel,
+      created,
+    ];
+
+    cells.forEach((value, index) => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      if (index === 1 && room.code === currentRoomCode) {
+        const badge = document.createElement("span");
+        badge.className = "pill";
+        badge.textContent = t("rooms.join.current");
+        badge.ariaLabel = t("rooms.join.current");
+        cell.appendChild(document.createTextNode(" "));
+        cell.appendChild(badge);
+      }
+      row.appendChild(cell);
+    });
+
+    const actionCell = document.createElement("td");
     const actions = document.createElement("div");
     actions.className = "item-actions";
     if (room.is_joined) {
@@ -1314,6 +1333,7 @@ function renderRooms(rooms) {
       joinButton.className = "ghost";
       joinButton.textContent = t("rooms.join.cta");
       joinButton.disabled = !authToken || !room.is_joinable;
+      joinButton.setAttribute("aria-label", `${t("rooms.join.cta")}: ${room.name}`);
       if (!room.is_joinable) {
         joinButton.title = joinableLabel;
       }
@@ -1323,12 +1343,14 @@ function renderRooms(rooms) {
       joinButton.addEventListener("click", () => joinRoom(room.code));
       actions.appendChild(joinButton);
     }
-
-    item.appendChild(title);
-    item.appendChild(meta);
-    item.appendChild(actions);
-    roomsList.appendChild(item);
+    actionCell.appendChild(actions);
+    row.appendChild(actionCell);
+    roomsTableBody.appendChild(row);
   });
+
+  if (roomsTable) {
+    roomsTable.classList.toggle("has-active", rooms.some((room) => room.code === currentRoomCode));
+  }
 }
 
 async function createRoom(event) {
@@ -1340,21 +1362,30 @@ async function createRoom(event) {
     document.getElementById("maxSpectators").value,
     10
   );
+  setRoomFormError("");
   await withBusyState(button, async () => {
     if (!authToken) {
-      log(t("messages.loginRequiredRoom"), true);
+      const message = t("messages.loginRequiredRoom");
+      setRoomFormError(message);
+      log(message, true);
       return;
     }
     if (!roomName) {
-      log(t("messages.roomNameRequired"), true);
+      const message = t("messages.roomNameRequired");
+      setRoomFormError(message);
+      log(message, true);
       return;
     }
-    if (Number.isNaN(maxPlayers)) {
-      log(t("messages.maxPlayersRequired"), true);
+    if (Number.isNaN(maxPlayers) || maxPlayers < 2 || maxPlayers > 6) {
+      const message = t("messages.maxPlayersRequired");
+      setRoomFormError(message);
+      log(message, true);
       return;
     }
-    if (Number.isNaN(maxSpectators)) {
-      log(t("messages.spectatorsRequired"), true);
+    if (Number.isNaN(maxSpectators) || maxSpectators < 0 || maxSpectators > 10) {
+      const message = t("messages.spectatorsRequired");
+      setRoomFormError(message);
+      log(message, true);
       return;
     }
 
@@ -1386,10 +1417,12 @@ async function createRoom(event) {
       setCurrentRoom(room.code);
       log(t("messages.roomCreated", { name: room.name, code: room.code }));
       document.getElementById("roomName").value = "";
+      setRoomFormError("");
       await loadRooms();
       await prepareGameplayArea();
     } catch (error) {
       log(error.message, true);
+      setRoomFormError(error.message);
     }
   });
 }
