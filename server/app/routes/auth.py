@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import ValidationError
 
 from app.config import get_settings
 from app.dependencies import get_repository, get_settings_dep
@@ -20,9 +21,24 @@ def _validate_login_payload(payload: LoginRequest, settings):
             raise HTTPException(status_code=400, detail="Guest login requires a password")
 
 
+async def _parse_login_request(request: Request) -> LoginRequest:
+    """Accept login payloads from JSON or form bodies and normalize errors."""
+
+    content_type = request.headers.get("content-type", "")
+    try:
+        if content_type.startswith("application/json"):
+            data = await request.json()
+        else:
+            form_data = await request.form()
+            data = dict(form_data)
+        return LoginRequest.parse_obj(data)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail={"errors": exc.errors()}) from exc
+
+
 @router.post("/login", response_model=AuthResponse)
-def login(
-    payload: LoginRequest,
+async def login(
+    payload: LoginRequest = Depends(_parse_login_request),
     repo: Repository = Depends(get_repository),
     settings=Depends(get_settings_dep),
 ):
