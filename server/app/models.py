@@ -98,6 +98,11 @@ class RoomCreate(SQLModel):
         ..., ge=0, le=10, description="Maximum spectators allowed (up to 10)"
     )
     visibility: str = Field("private", description="private or public")
+    status: str = Field("active", description="active or archived")
+
+
+class RoomJoin(SQLModel):
+    as_spectator: bool = False
 
 
 class Room(SQLModel, table=True):
@@ -107,6 +112,7 @@ class Room(SQLModel, table=True):
     max_players: int
     max_spectators: int
     visibility: str
+    status: str = Field(default="active")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -117,7 +123,19 @@ class RoomRead(SQLModel):
     max_players: int
     max_spectators: int
     visibility: str
+    status: str
+    player_count: int = 0
+    spectator_count: int = 0
+    is_joined: bool = False
+    is_joinable: bool = False
     created_at: datetime
 
     class Config:
         orm_mode = True
+
+
+class RoomMembership(SQLModel, table=True):
+    room_code: str = Field(foreign_key="room.code", primary_key=True)
+    user_id: str = Field(foreign_key="user.id", primary_key=True)
+    role: str = Field(default="player")
+    joined_at: datetime = Field(default_factory=datetime.utcnow)

@@ -58,6 +58,15 @@ def _apply_migrations() -> None:
                 )
             )
 
+    if "status" not in room_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE room "
+                    "ADD COLUMN status VARCHAR NOT NULL DEFAULT 'active'"
+                )
+            )
+
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
@@ -67,11 +76,9 @@ def init_db() -> None:
 def _migrate_password_hash_column() -> None:
     inspector = inspect(engine)
     columns = {column["name"] for column in inspector.get_columns("user")}
-    if "password_hash" in columns:
-        return
-
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE user ADD COLUMN password_hash VARCHAR"))
+    if "password_hash" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE user ADD COLUMN password_hash VARCHAR"))
     _add_missing_max_spectators_column()
     _apply_migrations()
 

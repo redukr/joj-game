@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   authToken: "joj-auth-token",
   user: "joj-user",
+  roomCode: "joj-room-code",
 };
 
 const LANGUAGE_STORAGE_KEY = "joj-language";
@@ -54,6 +55,18 @@ const TRANSLATIONS = {
         players: "Players",
         spectators: "Spectators",
         visibility: "Visibility",
+        status: "Status",
+        joinable: "Joinable",
+        created: "Created",
+      },
+      status: { active: "Active", archived: "Archived" },
+      join: {
+        cta: "Join room",
+        joined: "Joined",
+        current: "Current room",
+        joinable: "Yes",
+        closed: "Closed",
+        full: "Full",
       },
     },
     game: {
@@ -61,7 +74,7 @@ const TRANSLATIONS = {
       draw: "Draw card",
       reset: "Reset table",
       hint:
-        "Available once you sign in. Cards are pulled from the server deck so you can try drawing and arranging them locally.",
+        "Available after you join a room. Cards are pulled from the server deck so you can try drawing and arranging them locally.",
       deck: {
         heading: "Deck",
         hint: "Use Draw to pull the next card into your hand.",
@@ -132,6 +145,7 @@ const TRANSLATIONS = {
       loginFirstDraw: "Login first to draw a card.",
       deckEmpty: "Deck is empty. Reset the table to load cards again.",
       loginRequiredRoom: "Login first to create a room.",
+      joinRoomRequired: "Join a room first to use the gameplay workspace.",
       deckCountLabel: "{count} card{suffix}",
       roomsLoaded: "Loaded {count} room(s).",
       unableToLoadRooms: "Unable to load rooms: {status}",
@@ -140,6 +154,8 @@ const TRANSLATIONS = {
       spectatorsRequired: "Enter how many spectators are allowed (0-10).",
       createRoomFailed: "Create room failed: {status} {detail}",
       roomCreated: 'Created room "{name}" (code: {code}).',
+      roomJoined: 'Joined room "{name}" (code: {code}).',
+      unableToJoinRoom: "Unable to join room: {status} {detail}",
       cardsLoaded: "Loaded {count} card(s).",
       decksLoaded: "Loaded {count} deck(s).",
       unableLoadCards: "Unable to load cards: {status}",
@@ -211,6 +227,18 @@ const TRANSLATIONS = {
         players: "Гравців",
         spectators: "Глядачів",
         visibility: "Видимість",
+        status: "Статус",
+        joinable: "Можна приєднатися",
+        created: "Створено",
+      },
+      status: { active: "Активна", archived: "В архіві" },
+      join: {
+        cta: "Приєднатися",
+        joined: "Приєднано",
+        current: "Поточна кімната",
+        joinable: "Так",
+        closed: "Закрито",
+        full: "Заповнено",
       },
     },
     game: {
@@ -218,7 +246,7 @@ const TRANSLATIONS = {
       draw: "Взяти карту",
       reset: "Перезавантажити стіл",
       hint:
-        "Доступно після входу. Карти беруться з сервера, щоб ви могли тягнути та розкладати їх локально.",
+        "Доступно після приєднання до кімнати. Карти беруться з сервера, щоб ви могли тягнути та розкладати їх локально.",
       deck: {
         heading: "Колода",
         hint: "Натисніть \"Взяти карту\", щоб додати карту до руки.",
@@ -289,6 +317,7 @@ const TRANSLATIONS = {
       loginFirstDraw: "Спершу увійдіть, щоб тягнути карти.",
       deckEmpty: "Колода порожня. Перезавантажте стіл, щоб завантажити карти знову.",
       loginRequiredRoom: "Спершу увійдіть, щоб створити кімнату.",
+      joinRoomRequired: "Приєднайтеся до кімнати, щоб користуватися ігровим простором.",
       deckCountLabel: "{count} карт(и)",
       roomsLoaded: "Завантажено {count} кімнат(и).",
       unableToLoadRooms: "Не вдалося завантажити кімнати: {status}",
@@ -297,6 +326,8 @@ const TRANSLATIONS = {
       spectatorsRequired: "Вкажіть, скільки глядачів дозволено (0-10).",
       createRoomFailed: "Не вдалося створити кімнату: {status} {detail}",
       roomCreated: 'Створено кімнату "{name}" (код: {code}).',
+      roomJoined: 'Приєднано до кімнати "{name}" (код: {code}).',
+      unableToJoinRoom: "Не вдалося приєднатися: {status} {detail}",
       cardsLoaded: "Завантажено {count} карт(и).",
       decksLoaded: "Завантажено {count} колод(и).",
       unableLoadCards: "Не вдалося завантажити карти: {status}",
@@ -355,6 +386,7 @@ const loginPasswordInput = document.getElementById("loginPassword");
 
 let authToken = null;
 let currentUser = null;
+let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
 let deckCards = [];
 let handCards = [];
 let workspaceCards = [];
@@ -471,8 +503,46 @@ function setAuthSession(token, user) {
   } else {
     localStorage.removeItem(STORAGE_KEYS.authToken);
     localStorage.removeItem(STORAGE_KEYS.user);
+    setCurrentRoom(null);
     resetGameplayState();
   }
+}
+
+function setCurrentRoom(roomCode) {
+  const normalized = roomCode || null;
+  const previous = currentRoomCode;
+  currentRoomCode = normalized;
+  if (normalized) {
+    localStorage.setItem(STORAGE_KEYS.roomCode, normalized);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.roomCode);
+  }
+  if (previous !== normalized) {
+    resetGameplayState();
+  }
+  setUserInfo();
+}
+
+function syncRoomSelection(rooms) {
+  const joinedCodes = rooms.filter((room) => room.is_joined).map((room) => room.code);
+  if (joinedCodes.includes(currentRoomCode)) {
+    return;
+  }
+  if (joinedCodes.length) {
+    setCurrentRoom(joinedCodes[0]);
+  } else {
+    setCurrentRoom(null);
+  }
+}
+
+function requireRoomMembership(showMessage = true) {
+  if (!currentRoomCode) {
+    if (showMessage) {
+      log(t("messages.joinRoomRequired"), true);
+    }
+    return false;
+  }
+  return true;
 }
 
 function adminHeaders() {
@@ -505,7 +575,10 @@ function setUserInfo() {
     userInfo.textContent = t("login.notSignedIn");
     return;
   }
-  userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})`;
+  const roomNote = currentRoomCode
+    ? ` | ${t("rooms.meta.code")}: <strong>${currentRoomCode}</strong>`
+    : "";
+  userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})${roomNote}`;
 }
 
 function handleAuthFailure() {
@@ -625,8 +698,16 @@ function shuffleDeck(cards) {
   return copy;
 }
 
-async function prepareGameplayArea() {
-  if (!authToken || !gameSection) return;
+async function prepareGameplayArea(warnIfNotJoined = false) {
+  if (!authToken || !gameSection || !currentRoomCode) {
+    if (gameSection) {
+      gameSection.hidden = true;
+    }
+    if (warnIfNotJoined && !currentRoomCode) {
+      log(t("messages.joinRoomRequired"), true);
+    }
+    return;
+  }
   try {
     const response = await fetch(apiUrl("/cards"));
     if (!response.ok) {
@@ -650,9 +731,45 @@ async function prepareGameplayArea() {
   }
 }
 
+async function joinRoom(roomCode) {
+  if (!authToken) {
+    log(t("messages.loginRequiredRoom"), true);
+    return;
+  }
+  try {
+    const response = await fetch(apiUrl(`/rooms/${roomCode}/join`), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ as_spectator: false }),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      if (response.status === 401) {
+        handleAuthFailure();
+      }
+      throw new Error(
+        t("messages.unableToJoinRoom", { status: response.status, detail: errText })
+      );
+    }
+    const room = await response.json();
+    setCurrentRoom(room.code);
+    log(t("messages.roomJoined", { name: room.name, code: room.code }));
+    await loadRooms();
+    await prepareGameplayArea();
+  } catch (error) {
+    log(error.message, true);
+  }
+}
+
 function drawFromDeck() {
   if (!authToken) {
     log(t("messages.loginFirstDraw"), true);
+    return;
+  }
+  if (!requireRoomMembership(true)) {
     return;
   }
   if (!deckCards.length) {
@@ -766,7 +883,11 @@ async function handleGuestRegistration(event) {
 async function loadRooms() {
   if (!roomsList) return;
   try {
-    const response = await fetch(apiUrl("/rooms"));
+    const headers = {};
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
+    const response = await fetch(apiUrl("/rooms"), { headers });
     if (!response.ok) {
       if (response.status === 401) {
         handleAuthFailure();
@@ -774,6 +895,10 @@ async function loadRooms() {
       throw new Error(t("messages.unableToLoadRooms", { status: response.status }));
     }
     const rooms = await response.json();
+    if (authToken) {
+      syncRoomSelection(rooms);
+    }
+    setUserInfo();
     renderRooms(rooms);
     log(t("messages.roomsLoaded", { count: rooms.length }));
   } catch (error) {
@@ -791,23 +916,67 @@ function renderRooms(rooms) {
 
   rooms.forEach((room) => {
     const item = document.createElement("li");
+    if (room.code === currentRoomCode) {
+      item.classList.add("active-room");
+    }
     const title = document.createElement("div");
     title.className = "title";
     title.textContent = room.name;
+    if (room.code === currentRoomCode) {
+      const currentBadge = document.createElement("span");
+      currentBadge.className = "pill";
+      currentBadge.textContent = t("rooms.join.current");
+      title.appendChild(currentBadge);
+    }
 
     const meta = document.createElement("div");
     meta.className = "meta";
+    const statusLabel = t(`rooms.status.${room.status}`);
+    const joinableLabel =
+      room.status !== "active"
+        ? t("rooms.join.closed")
+        : room.is_joinable
+        ? t("rooms.join.joinable")
+        : t("rooms.join.full");
+    const created = new Date(room.created_at).toLocaleString();
     const metaBits = [
       `${t("rooms.meta.host")}: ${room.host_user_id}`,
       `${t("rooms.meta.code")}: ${room.code}`,
-      `${t("rooms.meta.players")}: ${room.max_players}`,
-      `${t("rooms.meta.spectators")}: ${room.max_spectators}`,
+      `${t("rooms.meta.players")}: ${room.player_count}/${room.max_players}`,
+      `${t("rooms.meta.spectators")}: ${room.spectator_count}/${room.max_spectators}`,
       `${t("rooms.meta.visibility")}: ${room.visibility}`,
+      `${t("rooms.meta.status")}: ${statusLabel}`,
+      `${t("rooms.meta.joinable")}: ${joinableLabel}`,
+      `${t("rooms.meta.created")}: ${created}`,
     ];
     meta.textContent = metaBits.join(" | ");
 
+    const actions = document.createElement("div");
+    actions.className = "item-actions";
+    if (room.is_joined) {
+      const joinedPill = document.createElement("span");
+      joinedPill.className = "pill";
+      joinedPill.textContent = t("rooms.join.joined");
+      actions.appendChild(joinedPill);
+    } else {
+      const joinButton = document.createElement("button");
+      joinButton.type = "button";
+      joinButton.className = "ghost";
+      joinButton.textContent = t("rooms.join.cta");
+      joinButton.disabled = !authToken || !room.is_joinable;
+      if (!room.is_joinable) {
+        joinButton.title = joinableLabel;
+      }
+      if (!authToken) {
+        joinButton.title = t("messages.loginRequiredRoom");
+      }
+      joinButton.addEventListener("click", () => joinRoom(room.code));
+      actions.appendChild(joinButton);
+    }
+
     item.appendChild(title);
     item.appendChild(meta);
+    item.appendChild(actions);
     roomsList.appendChild(item);
   });
 }
@@ -862,6 +1031,7 @@ async function createRoom(event) {
     }
 
     const room = await response.json();
+    setCurrentRoom(room.code);
     log(t("messages.roomCreated", { name: room.name, code: room.code }));
     document.getElementById("roomName").value = "";
     await loadRooms();
@@ -1146,7 +1316,7 @@ function wireEvents() {
   if (deckForm) deckForm.addEventListener("submit", createDeck);
   if (drawCardButton) drawCardButton.addEventListener("click", drawFromDeck);
   if (resetGameplayButton)
-    resetGameplayButton.addEventListener("click", prepareGameplayArea);
+    resetGameplayButton.addEventListener("click", () => prepareGameplayArea(true));
   if (languageSelector)
     languageSelector.addEventListener("change", (event) => {
       setLanguage(event.target.value);
