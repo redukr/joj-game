@@ -620,6 +620,7 @@ let workspaceCards = [];
 let adminTokenIdleTimer = null;
 let adminStatus = { isActive: false, isChecking: false };
 let sessionCheckComplete = false;
+let adminTokenBootstrapAllowed = false;
 
 const STARTING_RESOURCES = {
   time: 1,
@@ -863,7 +864,9 @@ function redirectToLogin() {
   window.location.href = "../client-web/index.html";
 }
 
-function enforceRestrictedPageAccess() {
+function enforceRestrictedPageAccess(options = {}) {
+  const { allowAdminTokenEntry = false } = options;
+  const adminTokenEntryAllowed = allowAdminTokenEntry || adminTokenBootstrapAllowed;
   if (!sessionCheckComplete) {
     return true;
   }
@@ -873,11 +876,15 @@ function enforceRestrictedPageAccess() {
     showAccessBanner("messages.loginRequired");
     return false;
   }
-  if (pageName === "admin" && !hasAdminAccess()) {
-    log(t("messages.adminRoleRequired"), true);
-    showAccessBanner("messages.accessWarning");
-    return false;
+  const hasAccess = hasAdminAccess();
+  if (pageName === "admin" && !hasAccess) {
+    if (!adminTokenEntryAllowed) {
+      log(t("messages.adminRoleRequired"), true);
+      showAccessBanner("messages.accessWarning");
+    }
+    return adminTokenEntryAllowed;
   }
+  adminTokenBootstrapAllowed = false;
   hideAccessBanner();
   return true;
 }
@@ -1232,7 +1239,8 @@ async function restoreSession() {
     }
   }
   sessionCheckComplete = true;
-  enforceRestrictedPageAccess();
+  adminTokenBootstrapAllowed = pageName === "admin" && !hasAdminAccess();
+  enforceRestrictedPageAccess({ allowAdminTokenEntry: true });
 }
 
 function getGuestCredentials() {
