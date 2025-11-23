@@ -127,7 +127,10 @@ class Repository:
             self.session.flush()
             self.session.refresh(card)
             new_card_ids.append(card.id)
-            replacement_map[card_payload.id] = card.id
+
+            original_id = getattr(card_payload, "id", None)
+            if original_id is not None:
+                replacement_map[original_id] = card.id
 
         deck_payload = payload.deck
 
