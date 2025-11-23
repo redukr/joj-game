@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="auth" data-redirect-after-auth="main.html">
+    <a class="skip-link" href="#statusArea">Skip to status updates</a>
     <header>
       <div class="header-main">
         <div>
@@ -28,8 +29,8 @@
       <nav class="nav">
         <a href="index.html" class="active">Login</a>
         <a href="main.html">Game</a>
-        <a href="http://localhost:8002/management.html">Management</a>
-        <a href="http://localhost:8002/admin.html">Admin</a>
+        <a href="../admin-web/management.html">Management</a>
+        <a href="../admin-web/admin.html">Admin</a>
       </nav>
     </header>
 
@@ -51,8 +52,8 @@
           <p class="muted">First step: register or log in to continue.</p>
         </div>
         <div class="actions">
-          <a class="ghost" href="http://localhost:8002/management.html">Skip to management</a>
-          <a class="ghost" href="http://localhost:8002/admin.html">Admin module</a>
+          <a class="ghost" href="../admin-web/management.html">Skip to management</a>
+          <a class="ghost" href="../admin-web/admin.html">Admin module</a>
         </div>
       </div>
       <form id="guestLoginForm">
@@ -63,6 +64,8 @@
             name="displayName"
             type="text"
             required
+            minlength="3"
+            autocomplete="nickname"
             placeholder="Battle Planner"
             data-i18n-placeholder="login.displayNamePlaceholder"
           />
@@ -74,6 +77,8 @@
             name="loginPassword"
             type="password"
             required
+            minlength="6"
+            autocomplete="current-password"
             placeholder="Enter a password"
             data-i18n-placeholder="login.passwordPlaceholder"
           />
@@ -108,21 +113,27 @@
           <p class="muted">
             Browse high-level system, player, card, and deck options.
           </p>
-          <a class="button" href="http://localhost:8002/management.html">Go to management.html</a>
+          <a class="button" href="../admin-web/management.html">Go to management.html</a>
         </article>
         <article class="card nested-card">
           <h3>Admin</h3>
           <p class="muted">
             Supply your admin token to seed, inspect, and maintain core assets.
           </p>
-          <a class="button" href="http://localhost:8002/admin.html">Go to admin.html</a>
+          <a class="button" href="../admin-web/admin.html">Go to admin.html</a>
         </article>
       </div>
     </section>
 
     <section class="card">
       <h2 data-i18n="status.heading">Status</h2>
-      <pre id="statusArea" class="status"></pre>
+      <pre
+        id="statusArea"
+        class="status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+      ></pre>
     </section>
 
     <script src="main.js"></script>
