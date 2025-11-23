@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import ValidationError
 
@@ -32,6 +34,8 @@ async def _parse_login_request(request: Request) -> LoginRequest:
             form_data = await request.form()
             data = dict(form_data)
         return LoginRequest.parse_obj(data)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Malformed JSON body") from exc
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail={"errors": exc.errors()}) from exc
 
