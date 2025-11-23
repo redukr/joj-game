@@ -19,6 +19,11 @@ class CardBase(SQLModel):
         ..., description="Card description (e.g., 'Втрачено репутацію через невдалий виступ')"
     )
     category: Optional[str] = Field(None, description="Card category (e.g., 'scandal')")
+    time: int = Field(0, description="Time effect for the card (e.g., +1 or -2)")
+    reputation: int = Field(0, description="Reputation effect for the card")
+    discipline: int = Field(0, description="Discipline effect for the card")
+    documents: int = Field(0, description="Documents effect for the card")
+    technology: int = Field(0, description="Technology effect for the card")
 
 
 class Card(CardBase, table=True):
@@ -47,6 +52,11 @@ class DeckRead(DeckBase):
 
     class Config:
         orm_mode = True
+
+
+class DeckImport(SQLModel):
+    deck: DeckBase
+    cards: List[CardBase] = Field(default_factory=list)
 
 
 class User(SQLModel, table=True):

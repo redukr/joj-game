@@ -45,6 +45,24 @@ def _add_missing_max_spectators_column() -> None:
             message = str(getattr(error, "orig", error)).lower()
             if "duplicate column name" not in message:
                 raise
+
+
+def _ensure_card_resource_columns() -> None:
+    inspector = inspect(engine)
+    card_columns = {column_info["name"] for column_info in inspector.get_columns("card")}
+    resource_columns = {"time", "reputation", "discipline", "documents", "technology"}
+    missing = resource_columns - card_columns
+    if not missing:
+        return
+
+    for column_name in sorted(missing):
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE card "
+                    f"ADD COLUMN {column_name} INTEGER NOT NULL DEFAULT 0"
+                )
+            )
 def _apply_migrations() -> None:
     inspector = inspect(engine)
     room_columns = {column_info["name"] for column_info in inspector.get_columns("room")}
@@ -66,6 +84,7 @@ def _apply_migrations() -> None:
                     "ADD COLUMN status VARCHAR NOT NULL DEFAULT 'active'"
                 )
             )
+    _ensure_card_resource_columns()
 
 
 def init_db() -> None:
