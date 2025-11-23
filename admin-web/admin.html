@@ -28,10 +28,26 @@
       </div>
       <nav class="nav">
         <a href="../client-web/index.html" data-nav="login">LOGIN</a>
-        <a href="../client-web/main.html" data-nav="game">GAME</a>
-        <a href="management.html" data-nav="management">MANAGEMENT</a>
-        <a href="admin.html" class="active" data-nav="admin">ADMIN</a>
+        <a href="../client-web/main.html" data-nav="game" data-requires-auth>GAME</a>
+        <a href="management.html" data-nav="management" data-requires-auth>MANAGEMENT</a>
+        <a href="admin.html" class="active" data-nav="admin" data-requires-admin>ADMIN</a>
       </nav>
+      <div id="accessBanner" class="banner warning" hidden>
+        <div>
+          <p id="accessBannerMessage" data-i18n="messages.accessWarning">
+            Admin access required. Sign in or supply an admin token to continue.
+          </p>
+        </div>
+        <div class="banner-actions">
+          <button id="accessBannerLogin" type="button" class="ghost" data-i18n="messages.bannerLoginCta">
+            Go to login
+          </button>
+          <button id="accessBannerDismiss" type="button" class="ghost" data-i18n="messages.bannerDismiss">
+            Dismiss
+          </button>
+        </div>
+      </div>
+
       <div class="session-bar" role="status" aria-live="polite">
         <div class="session-chip" id="sessionApiChip">
           <span class="chip-label" data-i18n="session.apiLabel">API base</span>
@@ -84,6 +100,15 @@
         <p class="hint" data-i18n="admin.tokenHint">
           Paste the ADMIN_TOKEN from your server configuration to bootstrap admin actions without an admin account.
         </p>
+        <div class="pill warning inline-pill" id="adminTokenWarning" aria-live="polite">
+          <span data-i18n="admin.tokenWarning">
+            Admin tokens are sensitive. Stored only for this session and cleared after inactivity.
+          </span>
+          <button id="clearAdminToken" class="ghost" type="button" data-i18n="admin.clearToken">
+            Clear token
+          </button>
+        </div>
+        <div class="field-error" id="adminTokenError" aria-live="polite"></div>
         <div id="adminTokenStatus" class="pill muted" aria-live="polite"></div>
         <div class="actions">
           <button id="refreshAdminData" type="button" data-i18n="admin.loadData">
@@ -213,7 +238,11 @@
                 data-i18n-placeholder="cards.form.technologyPlaceholder"
               />
             </label>
-            <button type="submit" data-i18n="cards.form.submit">Create card</button>
+            <div class="field-error" id="cardFormError" aria-live="polite"></div>
+            <div class="actions">
+              <button type="submit" data-i18n="cards.form.submit">Create card</button>
+              <button type="button" id="resetCardForm" class="ghost">Reset</button>
+            </div>
           </form>
           <ul id="cardsList" class="list"></ul>
         </article>
@@ -257,7 +286,11 @@
                 data-i18n-placeholder="decks.form.cardIdsPlaceholder"
               />
             </label>
-            <button type="submit" data-i18n="decks.form.submit">Create deck</button>
+            <div class="field-error" id="deckFormError" aria-live="polite"></div>
+            <div class="actions">
+              <button type="submit" data-i18n="decks.form.submit">Create deck</button>
+              <button type="button" id="resetDeckForm" class="ghost">Reset</button>
+            </div>
           </form>
           <div class="stack">
             <label class="field">

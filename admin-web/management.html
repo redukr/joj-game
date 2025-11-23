@@ -28,10 +28,26 @@
       </div>
       <nav class="nav">
         <a href="../client-web/index.html" data-nav="login">LOGIN</a>
-        <a href="../client-web/main.html" data-nav="game">GAME</a>
-        <a href="management.html" class="active" data-nav="management">MANAGEMENT</a>
-        <a href="admin.html" data-nav="admin">ADMIN</a>
+        <a href="../client-web/main.html" data-nav="game" data-requires-auth>GAME</a>
+        <a href="management.html" class="active" data-nav="management" data-requires-auth>MANAGEMENT</a>
+        <a href="admin.html" data-nav="admin" data-requires-admin>ADMIN</a>
       </nav>
+
+      <div id="accessBanner" class="banner warning" hidden>
+        <div>
+          <p id="accessBannerMessage" data-i18n="messages.loginRequired">
+            Please sign in to access this page.
+          </p>
+        </div>
+        <div class="banner-actions">
+          <button id="accessBannerLogin" type="button" class="ghost" data-i18n="messages.bannerLoginCta">
+            Go to login
+          </button>
+          <button id="accessBannerDismiss" type="button" class="ghost" data-i18n="messages.bannerDismiss">
+            Dismiss
+          </button>
+        </div>
+      </div>
       <div class="session-bar" role="status" aria-live="polite">
         <div class="session-chip" id="sessionApiChip">
           <span class="chip-label" data-i18n="session.apiLabel">API base</span>

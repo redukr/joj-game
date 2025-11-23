@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
 };
 
 const LANGUAGE_STORAGE_KEY = "joj-language";
+const ADMIN_TOKEN_IDLE_MS = 15 * 60 * 1000;
 
 const TRANSLATIONS = {
   en: {
@@ -50,6 +51,9 @@ const TRANSLATIONS = {
       tokenPlaceholder: "Paste the server ADMIN_TOKEN value",
       tokenHint:
         "Paste the ADMIN_TOKEN from your server configuration to bootstrap admin actions without an admin account.",
+      tokenWarning:
+        "Admin tokens are sensitive. They are stored only for this session and will auto-clear after inactivity.",
+      clearToken: "Clear token",
       status: {
         idle: "Admin access required to load data.",
         checking: "Checking admin access...",
@@ -255,6 +259,12 @@ const TRANSLATIONS = {
       deletedRoom: "Deleted room {code}.",
       deleteRoomFailed: "Delete room failed: {status} {detail}",
       adminDataLoaded: "Admin data refreshed.",
+      accessWarning:
+        "Admin access required. Provide the ADMIN_TOKEN or sign in as an admin to continue.",
+      bannerLoginCta: "Go to login",
+      bannerDismiss: "Dismiss",
+      adminTokenCleared: "Admin token cleared.",
+      adminTokenExpired: "Admin token cleared after inactivity.",
     },
   },
   uk: {
@@ -299,6 +309,9 @@ const TRANSLATIONS = {
       tokenPlaceholder: "Вставте значення ADMIN_TOKEN із сервера",
       tokenHint:
         "Вставте ADMIN_TOKEN із конфігурації сервера, щоб увімкнути адмін-дії без адмін-акаунта.",
+      tokenWarning:
+        "Адмін-токени чутливі. Зберігаються лише в цій сесії та очищаються після бездіяльності.",
+      clearToken: "Очистити токен",
       status: {
         idle: "Потрібен адмін-доступ для завантаження даних.",
         checking: "Перевіряємо адмін-доступ...",
@@ -505,6 +518,12 @@ const TRANSLATIONS = {
       deletedRoom: "Кімнату {code} видалено.",
       deleteRoomFailed: "Не вдалося видалити кімнату: {status} {detail}",
       adminDataLoaded: "Адмін-дані оновлено.",
+      accessWarning:
+        "Потрібен адмін-доступ. Введіть ADMIN_TOKEN або увійдіть як адміністратор.",
+      bannerLoginCta: "Перейти до входу",
+      bannerDismiss: "Сховати",
+      adminTokenCleared: "Адмін-токен очищено.",
+      adminTokenExpired: "Адмін-токен очищено через бездіяльність.",
     },
   },
 };
@@ -514,6 +533,10 @@ let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
 const pageName = document.body.dataset.page || "all";
 const statusArea = document.getElementById("statusArea");
 const apiBaseInput = document.getElementById("apiBase");
+const accessBanner = document.getElementById("accessBanner");
+const accessBannerMessage = document.getElementById("accessBannerMessage");
+const accessBannerLogin = document.getElementById("accessBannerLogin");
+const accessBannerDismiss = document.getElementById("accessBannerDismiss");
 const guestLoginForm = document.getElementById("guestLoginForm");
 const registerGuestButton = document.getElementById("registerGuest");
 const roomForm = document.getElementById("roomForm");
@@ -527,8 +550,15 @@ const refreshUsersButton = document.getElementById("refreshUsers");
 const refreshAdminRoomsButton = document.getElementById("refreshAdminRooms");
 const adminStatusLabel = document.getElementById("adminTokenStatus");
 const adminTokenInput = document.getElementById("adminToken");
+const adminTokenWarning = document.getElementById("adminTokenWarning");
+const adminTokenError = document.getElementById("adminTokenError");
+const clearAdminTokenButton = document.getElementById("clearAdminToken");
 const cardForm = document.getElementById("cardForm");
+const cardFormError = document.getElementById("cardFormError");
+const resetCardFormButton = document.getElementById("resetCardForm");
 const deckForm = document.getElementById("deckForm");
+const deckFormError = document.getElementById("deckFormError");
+const resetDeckFormButton = document.getElementById("resetDeckForm");
 const deckImportPayload = document.getElementById("deckImportPayload");
 const importDeckButton = document.getElementById("importDeck");
 const cardsList = document.getElementById("cardsList");
@@ -558,6 +588,7 @@ let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
 let deckCards = [];
 let handCards = [];
 let workspaceCards = [];
+let adminTokenIdleTimer = null;
 let adminStatus = { isActive: false, isChecking: false };
 let sessionCheckComplete = false;
 
@@ -647,15 +678,18 @@ function syncNavLinks() {
 
   if (navGameLink) {
     navGameLink.textContent = "GAME";
-    navGameLink.hidden = !isLoggedIn;
+    navGameLink.setAttribute("aria-disabled", String(!isLoggedIn));
+    navGameLink.dataset.guardMessage = "messages.loginRequired";
   }
 
   if (navManagementLink) {
-    navManagementLink.hidden = !isLoggedIn;
+    navManagementLink.setAttribute("aria-disabled", String(!isLoggedIn));
+    navManagementLink.dataset.guardMessage = "messages.loginRequired";
   }
 
   if (navAdminLink) {
-    navAdminLink.hidden = !canAccessAdmin;
+    navAdminLink.setAttribute("aria-disabled", String(!canAccessAdmin));
+    navAdminLink.dataset.guardMessage = "messages.accessWarning";
   }
 
   enforceRestrictedPageAccess();
@@ -665,15 +699,35 @@ function log(message, isError = false) {
   const prefix = new Date().toLocaleTimeString();
   const line = `[${prefix}] ${message}`;
   if (statusArea) {
+    if (!statusArea.hasAttribute("tabindex")) {
+      statusArea.setAttribute("tabindex", "-1");
+    }
     statusArea.textContent = `${line}\n${statusArea.textContent}`.trim();
     statusArea.classList.toggle("error", isError);
     statusArea.setAttribute("aria-label", line);
     if (isError) {
       statusArea.scrollTop = 0;
+      statusArea.focus({ preventScroll: false });
     }
   } else {
     console[isError ? "error" : "log"](line);
   }
+}
+
+function setFieldError(target, message = "") {
+  if (!target) return;
+  target.textContent = message;
+}
+
+function showAccessBanner(messageKey) {
+  if (!accessBanner || !accessBannerMessage) return;
+  accessBannerMessage.textContent = t(messageKey);
+  accessBanner.hidden = false;
+}
+
+function hideAccessBanner() {
+  if (!accessBanner) return;
+  accessBanner.hidden = true;
 }
 
 function apiUrl(path) {
@@ -700,19 +754,17 @@ function getAdminToken() {
 
 function persistAdminToken() {
   if (!adminTokenInput) return;
-  const savedToken = localStorage.getItem(STORAGE_KEYS.adminToken);
+  const savedToken =
+    sessionStorage.getItem(STORAGE_KEYS.adminToken) ||
+    localStorage.getItem(STORAGE_KEYS.adminToken);
   if (savedToken) {
+    sessionStorage.setItem(STORAGE_KEYS.adminToken, savedToken);
     adminTokenInput.value = savedToken;
+    resetAdminTokenIdleTimer();
+    localStorage.removeItem(STORAGE_KEYS.adminToken);
   }
   adminTokenInput.addEventListener("input", () => {
-    const value = adminTokenInput.value.trim();
-    if (value) {
-      localStorage.setItem(STORAGE_KEYS.adminToken, value);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.adminToken);
-    }
-    syncAdminUi();
-    syncNavLinks();
+    setAdminToken(adminTokenInput.value);
   });
 }
 
@@ -724,10 +776,54 @@ function hasAdminAccess() {
   return Boolean(getAdminToken() || (authToken && isAdmin()));
 }
 
+function clearAdminTokenTimer() {
+  if (adminTokenIdleTimer) {
+    clearTimeout(adminTokenIdleTimer);
+    adminTokenIdleTimer = null;
+  }
+}
+
+function resetAdminTokenIdleTimer() {
+  clearAdminTokenTimer();
+  const token = getAdminToken();
+  if (!token) return;
+  adminTokenIdleTimer = setTimeout(() => {
+    clearAdminToken("messages.adminTokenExpired");
+  }, ADMIN_TOKEN_IDLE_MS);
+}
+
+function clearAdminToken(messageKey = null) {
+  const hadToken = Boolean(getAdminToken());
+  setAdminToken("");
+  if (hadToken && messageKey) {
+    log(t(messageKey));
+  }
+}
+
+function setAdminToken(value, messageKey = null) {
+  if (!adminTokenInput) return;
+  const trimmed = value?.trim() || "";
+  adminTokenInput.value = trimmed;
+  if (trimmed) {
+    sessionStorage.setItem(STORAGE_KEYS.adminToken, trimmed);
+    setFieldError(adminTokenError, "");
+    resetAdminTokenIdleTimer();
+  } else {
+    sessionStorage.removeItem(STORAGE_KEYS.adminToken);
+    clearAdminTokenTimer();
+  }
+  syncAdminUi();
+  syncNavLinks();
+  if (messageKey) {
+    log(t(messageKey));
+  }
+}
+
 function requireAdminAccess(showMessage = true) {
   const allowed = hasAdminAccess();
   if (!allowed && showMessage) {
     log(t("messages.adminRoleRequired"), true);
+    setFieldError(adminTokenError, t("messages.adminRoleRequired"));
   }
   return allowed;
 }
@@ -743,14 +839,15 @@ function enforceRestrictedPageAccess() {
   const isLoggedIn = Boolean(authToken && currentUser);
   if (pageName === "management" && !isLoggedIn) {
     log(t("messages.loginRequired"), true);
-    redirectToLogin();
+    showAccessBanner("messages.loginRequired");
     return false;
   }
   if (pageName === "admin" && !hasAdminAccess()) {
     log(t("messages.adminRoleRequired"), true);
-    redirectToLogin();
+    showAccessBanner("messages.accessWarning");
     return false;
   }
+  hideAccessBanner();
   return true;
 }
 
@@ -819,6 +916,7 @@ function adminHeaders() {
   if (authToken && isAdmin()) {
     headers.Authorization = `Bearer ${authToken}`;
   }
+  resetAdminTokenIdleTimer();
   return headers;
 }
 
@@ -1679,6 +1777,7 @@ async function deleteAdminRoom(roomCode) {
 
 async function createCard(event) {
   event.preventDefault();
+  setFieldError(cardFormError, "");
   const name = document.getElementById("cardName").value.trim();
   const description = document.getElementById("cardDescription").value.trim();
   const category = document.getElementById("cardCategory").value.trim();
@@ -1691,7 +1790,9 @@ async function createCard(event) {
     resourcePayload[key] = Number.isNaN(value) ? 0 : value;
   });
   if (!name || !description) {
-    log(t("messages.cardFieldsRequired"), true);
+    const message = t("messages.cardFieldsRequired");
+    setFieldError(cardFormError, message);
+    log(message, true);
     return;
   }
 
@@ -1717,8 +1818,10 @@ async function createCard(event) {
     const card = await response.json();
     log(t("messages.cardCreated", { name: card.name, id: card.id }));
     cardForm.reset();
+    setFieldError(cardFormError, "");
     await loadCards();
   } catch (error) {
+    setFieldError(cardFormError, error.message);
     log(error.message, true);
   }
 }
@@ -1735,12 +1838,15 @@ function parseCardIds(input) {
 
 async function createDeck(event) {
   event.preventDefault();
+  setFieldError(deckFormError, "");
   const name = document.getElementById("deckName").value.trim();
   const description = document.getElementById("deckDescription").value.trim();
   const cardIdsInput = document.getElementById("deckCardIds").value;
   const card_ids = parseCardIds(cardIdsInput);
   if (!name) {
-    log(t("messages.deckNameRequired"), true);
+    const message = t("messages.deckNameRequired");
+    setFieldError(deckFormError, message);
+    log(message, true);
     return;
   }
 
@@ -1761,8 +1867,10 @@ async function createDeck(event) {
     const deck = await response.json();
     log(t("messages.deckCreated", { name: deck.name, id: deck.id }));
     deckForm.reset();
+    setFieldError(deckFormError, "");
     await loadDecks();
   } catch (error) {
+    setFieldError(deckFormError, error.message);
     log(error.message, true);
   }
 }
@@ -1901,6 +2009,16 @@ function wireEvents() {
     refreshAdminRoomsButton.addEventListener("click", loadAdminRooms);
   if (cardForm) cardForm.addEventListener("submit", createCard);
   if (deckForm) deckForm.addEventListener("submit", createDeck);
+  if (resetCardFormButton)
+    resetCardFormButton.addEventListener("click", () => {
+      cardForm?.reset();
+      setFieldError(cardFormError, "");
+    });
+  if (resetDeckFormButton)
+    resetDeckFormButton.addEventListener("click", () => {
+      deckForm?.reset();
+      setFieldError(deckFormError, "");
+    });
   if (importDeckButton) importDeckButton.addEventListener("click", importDeck);
   if (drawCardButton) drawCardButton.addEventListener("click", drawFromDeck);
   if (resetGameplayButton)
@@ -1909,6 +2027,30 @@ function wireEvents() {
     languageSelector.addEventListener("change", (event) => {
       setLanguage(event.target.value);
     });
+  document.querySelectorAll(".nav [data-nav]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (link.getAttribute("aria-disabled") === "true") {
+        event.preventDefault();
+        const messageKey = link.dataset.guardMessage;
+        if (messageKey) {
+          showAccessBanner(messageKey);
+          log(t(messageKey), true);
+        }
+      }
+    });
+  });
+
+  if (accessBannerLogin)
+    accessBannerLogin.addEventListener("click", () => redirectToLogin());
+  if (accessBannerDismiss)
+    accessBannerDismiss.addEventListener("click", hideAccessBanner);
+  if (clearAdminTokenButton)
+    clearAdminTokenButton.addEventListener("click", () =>
+      clearAdminToken("messages.adminTokenCleared")
+    );
+  ["pointerdown", "keydown", "mousemove"].forEach((eventName) => {
+    document.addEventListener(eventName, resetAdminTokenIdleTimer, { passive: true });
+  });
 }
 
 persistApiBase();
