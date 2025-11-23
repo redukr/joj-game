@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.config import get_settings
 from app.dependencies import get_repository, require_admin
-from app.models import CardRead, CardBase, DeckRead, DeckBase
+from app.models import CardRead, CardBase, DeckRead, DeckBase, DeckImport
 from app.repository import Repository, paginate
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -55,3 +55,8 @@ def delete_deck(deck_id: int, repo: Repository = Depends(get_repository)):
 @router.get("/decks/{deck_id}/export")
 def export_deck(deck_id: int, repo: Repository = Depends(get_repository)):
     return repo.export_deck(deck_id)
+
+
+@router.post("/decks/import", response_model=DeckRead)
+def import_deck(payload: DeckImport, repo: Repository = Depends(get_repository)):
+    return repo.import_deck(payload)

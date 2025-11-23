@@ -13,6 +13,7 @@ from app.models import (
     CardRead,
     Deck,
     DeckBase,
+    DeckImport,
     DeckRead,
     LoginRequest,
     Provider,
@@ -116,6 +117,29 @@ class Repository:
             "deck": DeckRead.from_orm(deck),
             "cards": [CardRead.from_orm(card) for card in cards],
         }
+
+    def import_deck(self, payload: DeckImport) -> DeckRead:
+        new_card_ids: list[int] = []
+        for card_payload in payload.cards:
+            card = Card.from_orm(card_payload)
+            self.session.add(card)
+            self.session.flush()
+            self.session.refresh(card)
+            new_card_ids.append(card.id)
+
+        deck_payload = payload.deck
+        combined_card_ids = list(deck_payload.card_ids or []) + new_card_ids
+        self._validate_cards_exist(combined_card_ids)
+
+        deck = Deck(
+            name=deck_payload.name,
+            description=deck_payload.description,
+            card_ids=combined_card_ids,
+        )
+        self.session.add(deck)
+        self.session.flush()
+        self.session.refresh(deck)
+        return DeckRead.from_orm(deck)
 
     # Auth helpers
     def _hash_password(self, password: str) -> str:
