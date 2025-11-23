@@ -202,10 +202,12 @@ class Repository:
 
     def _validate_oauth_token(self, provider: Provider, token: str) -> dict:
         issuer, jwks_url = self._get_provider_config(provider)
-        if not self.settings.oauth_audience:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="OAuth audience is not configured")
+        audience = self.settings.oauth_audience or None
         jwks = self._fetch_jwks(jwks_url)
-        header = jwt.get_unverified_header(token)
+        try:
+            header = jwt.get_unverified_header(token)
+        except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OAuth token")
         key = None
         for jwk in jwks.get("keys", []):
             if jwk.get("kid") == header.get("kid"):
@@ -214,13 +216,17 @@ class Repository:
         if not key:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown signing key")
         try:
-            claims = jwt.decode(
-                token,
-                key,
-                algorithms=[header.get("alg", "RS256")],
-                audience=self.settings.oauth_audience,
-                issuer=issuer,
-            )
+            decode_kwargs = {
+                "token": token,
+                "key": key,
+                "algorithms": [header.get("alg", "RS256")],
+                "issuer": issuer,
+            }
+            if audience:
+                decode_kwargs["audience"] = audience
+            else:
+                decode_kwargs["options"] = {"verify_aud": False}
+            claims = jwt.decode(**decode_kwargs)
         except JWTError:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OAuth token")
         return claims
