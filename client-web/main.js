@@ -1,3 +1,17 @@
+// ==========================
+// BLOCK 1 — IMPORTS & BOOTSTRAP
+// ==========================
+import { t, initI18n } from "./modules/i18n.js";
+import * as UI from "./modules/ui.js";
+
+initI18n();
+window.t = t;
+UI.updateAllLabels();
+
+// ==========================
+// BLOCK 2 — CONSTANTS & STORAGE KEYS
+// ==========================
+
 const STORAGE_KEYS = {
   authToken: "joj-auth-token",
   user: "joj-user",
@@ -468,6 +482,9 @@ const TRANSLATIONS = {
 };
 
 let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
+// ==========================
+// BLOCK 3 — DOM ELEMENTS & UI HOOKS
+// ==========================
 
 const pageName = document.body.dataset.page || "all";
 const statusArea = document.getElementById("statusArea");
@@ -535,6 +552,9 @@ const RESOURCE_KEYS = ["time", "reputation", "discipline", "documents", "technol
 
 let playerResources = { ...STARTING_RESOURCES };
 
+await initI18n();
+document.body.dispatchEvent(new Event("translationsReady"));
+
 function resolveTranslation(key, language = currentLanguage) {
   const parts = key.split(".");
   let value = TRANSLATIONS[language];
@@ -563,10 +583,15 @@ function formatTranslation(template, vars = {}) {
   });
 }
 
-function t(key, vars = {}) {
-  const template = resolveTranslation(key);
-  return formatTranslation(template, vars);
-}
+
+// [LEGACY TRANSLATION]
+// This function is part of the old translation system.
+// New UI uses modules/i18n.js → function T(key).
+// Do not extend or modify this function anymore.
+//function t(key, vars = {}) {
+//  const template = resolveTranslation(key);
+//  return formatTranslation(template, vars);
+//}
 
 function applyTranslations() {
   document.documentElement.lang = currentLanguage;
@@ -717,18 +742,6 @@ function clearFieldErrors(...targets) {
   targets.filter(Boolean).forEach((target) => setFieldError(target));
 }
 
-function showToast(message, isError = false) {
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.toggle("error", isError);
-  toast.hidden = false;
-  if (toastTimer) {
-    clearTimeout(toastTimer);
-  }
-  toastTimer = setTimeout(() => {
-    toast.hidden = true;
-  }, 4000);
-}
 
 function setLanguage(language) {
   if (!TRANSLATIONS[language]) {
@@ -804,6 +817,7 @@ function requireAdminToken() {
   }
   return token;
 }
+// [AUTH BLOCK]
 
 function setAuthSession(token, user) {
   authToken = token;
@@ -949,12 +963,14 @@ function setUserInfo() {
   userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})${roomNote}`;
   syncSessionBar();
 }
+// [AUTH BLOCK]
 
 function handleAuthFailure() {
   log(t("messages.sessionExpired"), true);
   setAuthSession(null, null);
   setUserInfo();
 }
+// [AUTH BLOCK]
 
 function logoutUser() {
   setAuthSession(null, null);
@@ -1195,6 +1211,7 @@ async function restoreSession() {
   }
 }
 
+// [AUTH BLOCK]
 function getGuestCredentials() {
   const displayNameInput = document.getElementById("displayName");
   if (!displayNameInput || !loginPasswordInput) {
@@ -1217,7 +1234,7 @@ function getGuestCredentials() {
   }
   return { displayName, password };
 }
-
+// [AUTH BLOCK]
 async function authenticateGuest(successMessageKey, button) {
   const credentials = getGuestCredentials();
   if (!credentials) return;
@@ -1259,16 +1276,27 @@ async function authenticateGuest(successMessageKey, button) {
     }
   });
 }
+// [AUTH BLOCK]
+// ==========================
+// BLOCK 4 — AUTHENTICATION LOGIC
+// (login, logout, session, validation)
+// ==========================
 
 async function handleGuestLogin(event) {
   event.preventDefault();
   await authenticateGuest("messages.loginSuccess", event.submitter);
 }
+// [AUTH BLOCK]
 
 async function handleGuestRegistration(event) {
   event.preventDefault();
   await authenticateGuest("messages.registrationSuccess", event.submitter);
 }
+// ===== END OF AUTH BLOCK =====
+// ==========================
+// BLOCK 5 — ROOMS LOGIC
+// (list, create, join, update, table rendering)
+// ==========================
 
 async function loadRooms(event) {
   if (!roomsTableBody) return;
@@ -1460,6 +1488,7 @@ async function createRoom(event) {
     }
   });
 }
+// ===== END OF ROOMS BLOCK =====
 
 function formatCardEffects(card) {
   const effects = RESOURCE_KEYS.map((key) => ({
@@ -1584,6 +1613,10 @@ async function loadCards(event) {
     }
   });
 }
+// ==========================
+// BLOCK 6 — CARDS LOGIC
+// (loading deck, rendering cards, selection, preview)
+// ==========================
 
 async function loadDecks(event) {
   if (!decksList || !adminTokenInput) return;
@@ -1800,6 +1833,7 @@ async function importDeck(event) {
     }
   });
 }
+// ===== END OF CARDS BLOCK =====
 
 async function loadAdminData(event) {
   const button = event?.currentTarget || refreshAdminDataButton;

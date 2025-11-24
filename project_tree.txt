@@ -24,8 +24,6 @@
 │   └── styles.css
 ├── cards
 │   ├── README.md
-│   ├── cards_1.txt
-│   ├── sample-deck-lyap.json
 │   └── sample-deck.json
 ├── client-android
 │   └── README.md
@@ -40,6 +38,16 @@
 │   ├── index.html
 │   ├── main.html
 │   ├── main.js
+│   ├── modules
+│   │   ├── api.js
+│   │   ├── auth.js
+│   │   ├── cards.js
+│   │   ├── game.js
+│   │   ├── i18n.js
+│   │   ├── rooms.js
+│   │   ├── state.js
+│   │   ├── ui.js
+│   │   └── validation.js
 │   └── styles.css
 ├── client-windows
 │   ├── README.md

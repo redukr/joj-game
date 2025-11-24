@@ -116,7 +116,7 @@
             </div>
           </div>
           <div class="table-wrapper" role="region" aria-live="polite">
-            <table class="data-table" id="roomsTable">
+            <table class="data-table" id="rooms-table">
               <caption data-i18n="rooms.list.heading">Rooms</caption>
               <thead>
                 <tr>
@@ -132,7 +132,7 @@
                   <th scope="col" data-i18n="rooms.join.cta">Join</th>
                 </tr>
               </thead>
-              <tbody id="roomsTableBody"></tbody>
+              <tbody id="rooms-tableBody"></tbody>
             </table>
           </div>
         </article>
@@ -204,7 +204,17 @@
         Update this if your server runs on a different host or port.
       </p>
     </section>
+	<!-- New modular architecture (empty for now) -->
+	<script type="module" src="./modules/api.js"></script>
+	<script type="module" src="./modules/auth.js"></script>
+	<script type="module" src="./modules/state.js"></script>
+	<script type="module" src="./modules/rooms.js"></script>
+	<script type="module" src="./modules/cards.js"></script>
+	<script type="module" src="./modules/ui.js"></script>
+	<script type="module" src="./modules/i18n.js"></script>
+	<script type="module" src="./modules/validation.js"></script>
 
-    <script src="main.js"></script>
+	<!-- Existing legacy client logic -->
+	<script src="./main.js"></script>
   </body>
 </html>
