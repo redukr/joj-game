@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, Request, status
 from app.config import get_settings
 from app.db import get_session
 from app.repository import Repository
-from app.models import Role, UserRead
+from app.models import Provider, Role, UserRead
 
 
 def get_settings_dep():
@@ -26,6 +26,13 @@ def get_current_user(request: Request, repo: Repository = Depends(get_repository
     user = repo.get_user(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown user")
+    if user.role == Role.ADMIN and user.provider == Provider.GUEST:
+        password = request.headers.get("X-User-Password")
+        if not password or not repo.verify_guest_password(user_id, password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials",
+            )
     return user
 
 
