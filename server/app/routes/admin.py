@@ -1,20 +1,13 @@
 from fastapi import APIRouter, Depends
 
 from app.config import get_settings
-from app.dependencies import get_repository, require_admin
-from app.models import (
-    CardRead,
-    CardBase,
-    DeckRead,
-    DeckBase,
-    DeckImport,
-    RoomRead,
-    UserRead,
-    UserRoleUpdate,
-)
+from app.dependencies import get_admin_user, get_repository
+from app.models import CardRead, CardBase, DeckRead, DeckBase, DeckImport, RoomRead, UserRead
 from app.repository import Repository, paginate
 
-router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
+router = APIRouter(
+    prefix="/admin", tags=["admin"], dependencies=[Depends(get_admin_user)]
+)
 
 
 @router.get("/verify")
@@ -94,11 +87,6 @@ def list_users(limit: int | None = None, offset: int | None = None, repo: Reposi
         limit, offset, settings.default_page_size, settings.max_page_size
     )
     return repo.list_users(limit_value, offset_value)
-
-
-@router.patch("/users/{user_id}/role", response_model=UserRead)
-def update_user_role(user_id: str, payload: UserRoleUpdate, repo: Repository = Depends(get_repository)):
-    return repo.update_user_role(user_id, payload)
 
 
 @router.delete("/users/{user_id}", status_code=204)

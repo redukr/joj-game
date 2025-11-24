@@ -44,12 +44,13 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    logged as warnings so you can run the API without the static assets when needed.
 
 ## API surface
-- `POST /auth/login` — sign in with provider `apple`, `google`, or `guest` (default if omitted); returns bearer token for subsequent calls. Payload accepts both `display_name` and `displayName` keys for guest sign-up/login.
-- `POST /admin/cards` — create a card (requires admin bearer token).
-- `PUT /admin/cards/{id}` / `DELETE /admin/cards/{id}` — maintain cards.
-- `POST /admin/decks` — create deck from existing cards (requires admin bearer token).
-- `POST /rooms` — create a room using `Authorization: Bearer <token>` from `/auth/login`.
-- `GET /rooms` — list all rooms.
+- `POST /auth/login` — sign in with provider `apple`, `google`, or `guest` (default if omitted); returns the user record including its `role`. Payload accepts both `display_name` and `displayName` keys for guest sign-up/login. Accounts with the `guest` role are restricted to authentication endpoints only, while `admin` users have unrestricted access.
+  A default admin account (`display_name` = `admin`, password `admin`) is seeded on startup and can be used with the `guest` provider; set the `X-User-Id` header to `admin` when calling admin routes.
+- `POST /admin/cards` — create a card (requires `X-User-Id` for a user with role `admin`).
+- `PUT /admin/cards/{id}` / `DELETE /admin/cards/{id}` — maintain cards (requires admin headers).
+- `POST /admin/decks` — create deck from existing cards (requires admin headers).
+- `POST /rooms` — create a room using the `X-User-Id` header from `/auth/login`.
+- `GET /rooms` — list all rooms; include `X-User-Id` to see membership details.
 
 ## Notes
 - Data now persists to SQLite (`./data/app.db`) via SQLModel; adjust `DATABASE_URL` to point to a different location. The

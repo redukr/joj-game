@@ -2,13 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import ValidationError
 
 from app.config import get_settings
-from app.dependencies import (
-    get_bearer_token,
-    get_current_user,
-    get_repository,
-    get_settings_dep,
-)
-from app.models import AuthResponse, LoginRequest, PasswordChangeRequest, Provider
+from app.dependencies import get_current_user, get_repository, get_settings_dep
+from app.models import LoginRequest, PasswordChangeRequest, Provider, UserRead
 from app.repository import Repository
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -41,7 +36,7 @@ async def _parse_login_request(request: Request) -> LoginRequest:
         raise HTTPException(status_code=400, detail={"errors": exc.errors()}) from exc
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login", response_model=UserRead)
 async def login(
     payload: LoginRequest = Depends(_parse_login_request),
     repo: Repository = Depends(get_repository),
@@ -51,12 +46,7 @@ async def login(
     return repo.create_user(payload)
 
 
-@router.post("/logout", status_code=204)
-def logout(token: str = Depends(get_bearer_token), repo: Repository = Depends(get_repository)):
-    repo.revoke_token(token)
-
-
-@router.post("/password", response_model=AuthResponse)
+@router.post("/password", response_model=UserRead)
 def change_password(
     payload: PasswordChangeRequest,
     current_user=Depends(get_current_user),

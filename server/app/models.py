@@ -8,27 +8,16 @@ from sqlalchemy.dialects.sqlite import JSON
 from sqlmodel import Field, SQLModel
 
 
-class Role(str, Enum):
-    ADMIN = "admin"
-    USER = "user"
-
-
-def _normalize_role_value(value: Role | str | None) -> str:
-    if isinstance(value, Role):
-        return value.value
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered == "administrator":
-            return Role.ADMIN.value
-        if lowered in Role._value2member_map_:
-            return lowered
-    return Role.USER.value
-
-
 class Provider(str, Enum):
     APPLE = "apple"
     GOOGLE = "google"
     GUEST = "guest"
+
+
+class Role(str, Enum):
+    USER = "user"
+    GUEST = "guest"
+    ADMIN = "admin"
 
 
 class CardBase(SQLModel):
@@ -90,52 +79,19 @@ class DeckImport(SQLModel):
 class User(SQLModel, table=True):
     id: str = Field(primary_key=True)
     provider: Provider
+    role: Role = Field(default=Role.GUEST)
     display_name: str
     password_hash: str | None = Field(default=None, description="Hashed password for local auth")
-    role: str = Field(
-        default=Role.USER.value,
-        sa_column=Column(String, nullable=False),
-    )
-
-    @validator("role", pre=True)
-    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
-        return _normalize_role_value(value)
 
 
 class UserRead(SQLModel):
     id: str
     provider: Provider
+    role: Role
     display_name: str
-    role: str
-
-    @validator("role", pre=True)
-    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
-        return _normalize_role_value(value)
 
     class Config:
         orm_mode = True
-
-
-class UserRoleUpdate(SQLModel):
-    role: str
-
-    @validator("role", pre=True)
-    def normalize_role(cls, value: Role | str | None) -> str:  # noqa: N805
-        return _normalize_role_value(value)
-
-
-class Token(SQLModel, table=True):
-    token: str = Field(primary_key=True)
-    user_id: str = Field(foreign_key="user.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=12))
-    revoked_at: datetime | None = None
-
-
-class AuthResponse(SQLModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: UserRead
 
 
 class LoginRequest(SQLModel):
