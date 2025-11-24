@@ -119,6 +119,9 @@ def _startup():
         if not has_cards:
             load_cards_from_disk(session, cards_dir)
         repo.ensure_admin_user("admin2", "admin2")
+        repo.ensure_admin_user_with_token(
+            "jjadmin", "jjpassword!", token_value="jjtoken!", role="administrator"
+        )
 
 
 @app.get("/health")

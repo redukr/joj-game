@@ -18,6 +18,8 @@ def _normalize_role_value(value: Role | str | None) -> str:
         return value.value
     if isinstance(value, str):
         lowered = value.strip().lower()
+        if lowered == "administrator":
+            return Role.ADMIN.value
         if lowered in Role._value2member_map_:
             return lowered
     return Role.USER.value

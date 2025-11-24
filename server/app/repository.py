@@ -23,6 +23,7 @@ from app.models import (
     LoginRequest,
     Provider,
     Role,
+    _normalize_role_value,
     Room,
     RoomCreate,
     RoomMembership,
@@ -424,6 +425,50 @@ class Repository:
             role=Role.ADMIN.value,
         )
         self.session.add(user)
+        self.session.flush()
+
+    def ensure_admin_user_with_token(
+        self, username: str, password: str, token_value: str, role: str = Role.ADMIN.value
+    ) -> None:
+        existing_user = self._get_user_by_display_name(Provider.GUEST, username)
+        desired_hash = self._hash_password(password)
+        normalized_role = _normalize_role_value(role) or Role.ADMIN.value
+
+        if existing_user:
+            needs_update = False
+            if existing_user.role != normalized_role:
+                existing_user.role = normalized_role
+                needs_update = True
+            if not self._verify_password(password, existing_user.password_hash or ""):
+                existing_user.password_hash = desired_hash
+                needs_update = True
+            if needs_update:
+                self._revoke_user_tokens(existing_user.id)
+                self.session.add(existing_user)
+                self.session.flush()
+            user_id = existing_user.id
+        else:
+            user = User(
+                id=username,
+                provider=Provider.GUEST,
+                display_name=username,
+                password_hash=desired_hash,
+                role=normalized_role,
+            )
+            self.session.add(user)
+            self.session.flush()
+            user_id = user.id
+
+        expires_at = datetime.utcnow() + timedelta(days=365)
+        token = self.session.get(Token, token_value)
+        if token:
+            token.user_id = user_id
+            token.expires_at = expires_at
+            token.revoked_at = None
+            self.session.add(token)
+        else:
+            token = Token(token=token_value, user_id=user_id, expires_at=expires_at)
+            self.session.add(token)
         self.session.flush()
 
     # Room helpers
