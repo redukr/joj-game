@@ -43,9 +43,6 @@ class Settings(BaseSettings):
     allowed_origin_regex: str | None = Field(None, env="ALLOWED_ORIGIN_REGEX")
     default_page_size: int = Field(50, env="DEFAULT_PAGE_SIZE")
     max_page_size: int = Field(100, env="MAX_PAGE_SIZE")
-    access_token_ttl_minutes: int = Field(30, env="ACCESS_TOKEN_TTL_MINUTES")
-    admin_token: str | None = Field(None, env="ADMIN_TOKEN")
-
     @validator(
         "allowed_oauth_providers", "allowed_origins", "oauth_audience", pre=True, allow_reuse=True
     )

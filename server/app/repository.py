@@ -1,5 +1,4 @@
 import secrets
-from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
 import requests
@@ -7,12 +6,11 @@ from fastapi import HTTPException, status
 from jose import jwt
 from jose.exceptions import JWTError
 from sqlalchemy import func, or_
-from sqlmodel import Session, delete, select, update
+from sqlmodel import Session, delete, select
 from passlib.context import CryptContext
 
 from app.config import get_settings
 from app.models import (
-    AuthResponse,
     Card,
     CardBase,
     CardRead,
@@ -23,15 +21,12 @@ from app.models import (
     LoginRequest,
     Provider,
     Role,
-    _normalize_role_value,
     Room,
     RoomCreate,
     RoomMembership,
     RoomRead,
-    Token,
     User,
     UserRead,
-    UserRoleUpdate,
 )
 
 
@@ -273,19 +268,46 @@ class Repository:
         return claims
 
     def _generate_user(
-        self, provider: Provider, display_name: str, password_hash: str | None
+        self,
+        provider: Provider,
+        role: Role,
+        display_name: str,
+        password_hash: str | None,
     ) -> User:
         user_id = secrets.token_urlsafe(8)
         user = User(
             id=user_id,
             provider=provider,
+            role=role,
             display_name=display_name,
             password_hash=password_hash,
-            role=Role.USER.value,
         )
         self.session.add(user)
         self.session.flush()
         return user
+
+    def ensure_admin_user(self) -> User:
+        password_hash = self._hash_password("admin")
+        admin = self.session.get(User, "admin")
+
+        if admin:
+            admin.role = Role.ADMIN
+            admin.provider = Provider.GUEST
+            admin.display_name = "admin"
+            admin.password_hash = password_hash
+        else:
+            admin = User(
+                id="admin",
+                provider=Provider.GUEST,
+                role=Role.ADMIN,
+                display_name="admin",
+                password_hash=password_hash,
+            )
+            self.session.add(admin)
+
+        self.session.flush()
+        self.session.refresh(admin)
+        return admin
 
     def _get_user_by_display_name(
         self, provider: Provider, display_name: str
@@ -295,38 +317,10 @@ class Repository:
         )
         return self.session.exec(statement).first()
 
-    def _issue_token(self, user_id: str) -> str:
-        token_value = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(minutes=self.settings.access_token_ttl_minutes)
-        token = Token(token=token_value, user_id=user_id, expires_at=expires_at)
-        self.session.add(token)
-        self.session.flush()
-        return token_value
-
-    def _revoke_user_tokens(self, user_id: str) -> None:
-        self.session.exec(
-            update(Token)
-            .where(Token.user_id == user_id, Token.revoked_at.is_(None))
-            .values(revoked_at=datetime.utcnow())
-        )
-
-    def revoke_token(self, token_value: str) -> None:
-        token = self.session.get(Token, token_value)
-        if not token:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-
-        if token.revoked_at is None:
-            token.revoked_at = datetime.utcnow()
-            self.session.add(token)
-            self.session.flush()
-
-    def _cleanup_expired_tokens(self) -> None:
-        now = datetime.utcnow()
-        self.session.exec(delete(Token).where(Token.expires_at < now))
-
-    def create_user(self, payload: LoginRequest) -> AuthResponse:
+    def create_user(self, payload: LoginRequest) -> UserRead:
         display_name = payload.display_name or payload.provider.value.title()
         password_hash = None
+        role = Role.GUEST if payload.provider == Provider.GUEST else Role.USER
         if payload.provider in {Provider.APPLE, Provider.GOOGLE}:
             if not payload.token:
                 raise HTTPException(
@@ -357,28 +351,12 @@ class Repository:
                 self.session.flush()
             user = existing_user
         else:
-            user = self._generate_user(payload.provider, display_name, password_hash)
-        self._revoke_user_tokens(user.id)
-        token = self._issue_token(user.id)
-        return AuthResponse(access_token=token, user=UserRead.from_orm(user))
-
-    def resolve_user(self, token: str) -> UserRead:
-        self._cleanup_expired_tokens()
-        token_row = self.session.get(Token, token)
-        if not token_row:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        if token_row.revoked_at is not None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
-        if token_row.expires_at and token_row.expires_at < datetime.utcnow():
-            self.session.delete(token_row)
-            self.session.flush()
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
-        user = self.session.get(User, token_row.user_id)
-        if not user:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token owner")
+            user = self._generate_user(
+                payload.provider, role, display_name, password_hash
+            )
         return UserRead.from_orm(user)
 
-    def change_password(self, user_id: str, current_password: str, new_password: str) -> AuthResponse:
+    def change_password(self, user_id: str, current_password: str, new_password: str) -> UserRead:
         user = self.session.get(User, user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -395,81 +373,12 @@ class Repository:
 
         user.password_hash = self._hash_password(new_password)
         self.session.add(user)
-        self._revoke_user_tokens(user_id)
-        token = self._issue_token(user_id)
-        return AuthResponse(access_token=token, user=UserRead.from_orm(user))
-
-    def ensure_admin_user(self, username: str, password: str) -> None:
-        existing_user = self._get_user_by_display_name(Provider.GUEST, username)
-        desired_hash = self._hash_password(password)
-
-        if existing_user:
-            needs_update = False
-            if existing_user.role != Role.ADMIN.value:
-                existing_user.role = Role.ADMIN.value
-                needs_update = True
-            if not self._verify_password(password, existing_user.password_hash or ""):
-                existing_user.password_hash = desired_hash
-                needs_update = True
-            if needs_update:
-                self._revoke_user_tokens(existing_user.id)
-                self.session.add(existing_user)
-                self.session.flush()
-            return
-
-        user = User(
-            id=username,
-            provider=Provider.GUEST,
-            display_name=username,
-            password_hash=desired_hash,
-            role=Role.ADMIN.value,
-        )
-        self.session.add(user)
         self.session.flush()
+        return UserRead.from_orm(user)
 
-    def ensure_admin_user_with_token(
-        self, username: str, password: str, token_value: str, role: str = Role.ADMIN.value
-    ) -> None:
-        existing_user = self._get_user_by_display_name(Provider.GUEST, username)
-        desired_hash = self._hash_password(password)
-        normalized_role = _normalize_role_value(role) or Role.ADMIN.value
-
-        if existing_user:
-            needs_update = False
-            if existing_user.role != normalized_role:
-                existing_user.role = normalized_role
-                needs_update = True
-            if not self._verify_password(password, existing_user.password_hash or ""):
-                existing_user.password_hash = desired_hash
-                needs_update = True
-            if needs_update:
-                self._revoke_user_tokens(existing_user.id)
-                self.session.add(existing_user)
-                self.session.flush()
-            user_id = existing_user.id
-        else:
-            user = User(
-                id=username,
-                provider=Provider.GUEST,
-                display_name=username,
-                password_hash=desired_hash,
-                role=normalized_role,
-            )
-            self.session.add(user)
-            self.session.flush()
-            user_id = user.id
-
-        expires_at = datetime.utcnow() + timedelta(days=365)
-        token = self.session.get(Token, token_value)
-        if token:
-            token.user_id = user_id
-            token.expires_at = expires_at
-            token.revoked_at = None
-            self.session.add(token)
-        else:
-            token = Token(token=token_value, user_id=user_id, expires_at=expires_at)
-            self.session.add(token)
-        self.session.flush()
+    def get_user(self, user_id: str) -> UserRead | None:
+        user = self.session.get(User, user_id)
+        return UserRead.from_orm(user) if user else None
 
     # Room helpers
     def _generate_unique_code(self) -> str:
@@ -619,16 +528,6 @@ class Repository:
         users = self.session.exec(select(User).offset(offset).limit(limit)).all()
         return [UserRead.from_orm(user) for user in users]
 
-    def update_user_role(self, user_id: str, payload: UserRoleUpdate) -> UserRead:
-        user = self.session.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-        user.role = payload.role
-        self.session.add(user)
-        self._revoke_user_tokens(user_id)
-        self.session.flush()
-        return UserRead.from_orm(user)
-
     def delete_user(self, user_id: str) -> None:
         user = self.session.get(User, user_id)
         if not user:
@@ -639,7 +538,6 @@ class Repository:
         ).all()
 
         self.session.exec(delete(RoomMembership).where(RoomMembership.user_id == user_id))
-        self.session.exec(delete(Token).where(Token.user_id == user_id))
 
         for (room_code,) in rooms_to_delete:
             self.delete_room(room_code)
