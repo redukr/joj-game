@@ -68,7 +68,6 @@ def _ensure_card_resource_columns() -> None:
 def _apply_migrations() -> None:
     inspector = inspect(engine)
     room_columns = {column_info["name"] for column_info in inspector.get_columns("room")}
-    token_columns = {column_info["name"] for column_info in inspector.get_columns("token")}
 
     if "max_spectators" not in room_columns:
         with engine.begin() as connection:
@@ -85,28 +84,6 @@ def _apply_migrations() -> None:
                 text(
                     "ALTER TABLE room "
                     "ADD COLUMN status VARCHAR NOT NULL DEFAULT 'active'"
-                )
-            )
-    if "expires_at" not in token_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text("ALTER TABLE token ADD COLUMN expires_at DATETIME")
-            )
-        # Populate existing rows with a 12-hour expiry to match the application default
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "UPDATE token "
-                    "SET expires_at = datetime('now', '+12 hours') "
-                    "WHERE expires_at IS NULL"
-                )
-            )
-    if "revoked_at" not in token_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE token "
-                    "ADD COLUMN revoked_at DATETIME"
                 )
             )
     _ensure_card_resource_columns()
@@ -143,24 +120,10 @@ def _migrate_password_hash_column() -> None:
     if "role" not in columns:
         with engine.begin() as connection:
             connection.execute(
-                text("ALTER TABLE user ADD COLUMN role VARCHAR NOT NULL DEFAULT 'user'")
+                text("ALTER TABLE user ADD COLUMN role VARCHAR NOT NULL DEFAULT 'guest'")
             )
-    _normalize_user_roles()
     _add_missing_max_spectators_column()
     _apply_migrations()
-
-
-def _normalize_user_roles() -> None:
-    with engine.begin() as connection:
-        connection.execute(
-            text(
-                "UPDATE user SET role = lower(trim(role)) "
-                "WHERE role IS NOT NULL AND role != lower(trim(role))"
-            )
-        )
-        connection.execute(
-            text("UPDATE user SET role = 'user' WHERE role IS NULL OR trim(role) = ''")
-        )
 
 
 @contextmanager

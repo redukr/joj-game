@@ -132,10 +132,7 @@ def _startup():
         has_cards = session.query(Card).first() is not None
         if not has_cards:
             load_cards_from_disk(session, cards_dir)
-        repo.ensure_admin_user("admin2", "admin2")
-        repo.ensure_admin_user_with_token(
-            "jjadmin", "jjpassword!", token_value="jjtoken!", role="administrator"
-        )
+        repo.ensure_admin_user()
 
 
 @app.get("/health")
