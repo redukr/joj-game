@@ -1,4 +1,6 @@
 import logging
+import logging
+import secrets
 import time
 from collections import deque, defaultdict
 from typing import Deque
@@ -6,7 +8,7 @@ from typing import Deque
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db import get_session
 from app.repository import Repository
 from app.models import Role, UserRead
@@ -86,7 +88,17 @@ def get_optional_user(
     return repo.resolve_user(token)
 
 
-def require_admin(current_user: UserRead = Depends(get_current_user)):
-    if current_user.role == Role.ADMIN.value:
+def require_admin(
+    request: Request,
+    settings: Settings = Depends(get_settings_dep),
+    current_user: UserRead | None = Depends(get_optional_user),
+):
+    admin_token = request.headers.get("X-Admin-Token")
+    if settings.admin_token and admin_token:
+        if secrets.compare_digest(admin_token, settings.admin_token):
+            return
+
+    if current_user and current_user.role == Role.ADMIN.value:
         return
+
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin access required")

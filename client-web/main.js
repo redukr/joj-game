@@ -1,7 +1,7 @@
 // ==========================
 // BLOCK 1 — IMPORTS & BOOTSTRAP
 // ==========================
-import { t, initI18n } from "./modules/i18n.js";
+import { getLanguage, initI18n, setLanguage, t } from "./modules/i18n.js";
 import * as UI from "./modules/ui.js";
 import {
   login as authLogin,
@@ -17,8 +17,7 @@ import * as Game from "./modules/game.js";
 import * as Validation from "./modules/validation.js";
 
 initI18n();
-window.t = t;
-UI.updateAllLabels();
+UI.setLanguageSelector(getLanguage());
 
 // ==========================
 // BLOCK 2 — CONSTANTS & STORAGE KEYS
@@ -28,469 +27,7 @@ const STORAGE_KEYS = {
   apiBase: "joj-api-base",
 };
 
-const LANGUAGE_STORAGE_KEY = "joj-language";
-
-const TRANSLATIONS = {
-  en: {
-    title: "JOJ Game Web Client",
-    subtitle: "Interact with the FastAPI server from your browser.",
-    layout: {
-      game: {
-        heading: "Game Lobby",
-        subheading:
-          "Create or browse rooms and interact with the gameplay workspace.",
-      },
-      admin: {
-        heading: "Administrative tools",
-        subheading:
-          "Manage cards and decks with an admin token supplied by the server.",
-      },
-      management: {
-        heading: "Management hub",
-        subheading:
-          "Choose which module to manage: system, players, cards, or decks.",
-      },
-    },
-    language: { label: "Language" },
-    server: {
-      heading: "Server connection",
-      apiBase: "API base URL",
-      hint: "Update this if your server runs on a different host or port.",
-    },
-    admin: {
-      heading: "Admin access",
-      token: "Admin token",
-      tokenPlaceholder: "Paste the server ADMIN_TOKEN value",
-      hint1: "Needed for the /admin API. Stored only in this page during your session.",
-      hint2: "Admin tools appear once a token is provided.",
-      loadData: "Load cards & decks",
-      status: {
-        idle: "Enter the admin token to unlock tools.",
-        checking: "Checking admin token...",
-        valid: "Admin token validated.",
-        invalid: "Admin token invalid.",
-      },
-    },
-    login: {
-      heading: "Guest login",
-      displayName: "Display name",
-      displayNamePlaceholder: "Battle Planner",
-      password: "Password",
-      passwordPlaceholder: "Enter a password",
-      register: "Register",
-      submit: "Sign in",
-      notSignedIn: "Not signed in yet.",
-    },
-    rooms: {
-      create: {
-        heading: "Create room",
-        name: "Room name",
-        namePlaceholder: "Briefing Room",
-        maxPlayers: "Max players (2-6)",
-        maxSpectators: "Max spectators (0-10)",
-        submit: "Create room",
-        hint: "Requires a logged-in user; uses your bearer token automatically.",
-      },
-      list: {
-        heading: "Rooms",
-        refresh: "Refresh",
-        empty: "No rooms yet. Create one!",
-      },
-      meta: {
-        host: "Host",
-        name: "Name",
-        code: "Code",
-        players: "Players",
-        spectators: "Spectators",
-        visibility: "Visibility",
-        status: "Status",
-        joinable: "Joinable",
-        created: "Created",
-      },
-      status: { active: "Active", archived: "Archived" },
-      join: {
-        cta: "Join room",
-        joined: "Joined",
-        current: "Current room",
-        joinable: "Yes",
-        closed: "Closed",
-        full: "Full",
-      },
-    },
-    game: {
-      heading: "Gameplay workspace",
-      draw: "Draw card",
-      reset: "Reset table",
-      hint:
-        "Available after you join a room. Cards are pulled from the server deck so you can try drawing and arranging them locally.",
-      deck: {
-        heading: "Deck",
-        hint: "Use Draw to pull the next card into your hand.",
-        empty: "Deck empty",
-      },
-      hand: {
-        heading: "Hand",
-        empty: "Draw cards to see them in your hand.",
-        moveToWorkspace: "Move to workspace",
-      },
-      workspace: {
-        heading: "Workspace",
-        empty: "Move cards here to plan your turn.",
-        returnToHand: "Return to hand",
-      },
-      resources: {
-        time: "Time",
-        reputation: "Reputation",
-        discipline: "Discipline",
-        documents: "Documents",
-        technology: "Technology",
-      },
-    },
-    cards: {
-      heading: "Cards",
-      refresh: "Refresh",
-      form: {
-        name: "Name",
-        namePlaceholder: "Surprise Event",
-        description: "Description",
-        descriptionPlaceholder: "Something unexpected happens",
-        category: "Category (optional)",
-        categoryPlaceholder: "chaos",
-        time: "Time",
-        timePlaceholder: "+1 or -1",
-        reputation: "Reputation",
-        reputationPlaceholder: "+1 or -1",
-        discipline: "Discipline",
-        disciplinePlaceholder: "+1 or -1",
-        documents: "Documents",
-        documentsPlaceholder: "+1 or -1",
-        technology: "Technology",
-        technologyPlaceholder: "+1 or -1",
-        submit: "Create card",
-      },
-      listEmpty: "No cards yet. Create one above.",
-      noCategory: "No category",
-      noEffects: "No resource effects",
-      delete: "Delete",
-    },
-    decks: {
-      heading: "Decks",
-      refresh: "Refresh",
-      form: {
-        name: "Name",
-        namePlaceholder: "Starter Deck",
-        description: "Description (optional)",
-        descriptionPlaceholder: "Default cards",
-        cardIds: "Card IDs (comma separated)",
-        cardIdsPlaceholder: "1,2,3",
-        submit: "Create deck",
-      },
-      listEmpty: "No decks yet. Create one above.",
-      noDescription: "No description",
-      noCards: "No cards assigned",
-      export: "Export JSON",
-      import: {
-        label: "Import deck JSON",
-        placeholder: '{"deck": {"name": "Starter", "card_ids": []}, "cards": []}',
-        hint: "Paste deck export JSON to recreate decks and cards.",
-        submit: "Import JSON",
-      },
-      delete: "Delete",
-    },
-    status: { heading: "Status" },
-    session: {
-      apiLabel: "API base",
-      userLabel: "User",
-      userGuest: "Guest (not signed in)",
-      roomLabel: "Room",
-      roomNone: "Not joined",
-      adminLabel: "Admin",
-      adminMissing: "Token missing",
-    },
-    messages: {
-      adminTokenRequired: "Enter the admin token first.",
-      sessionExpired: "Session expired. Please log in again.",
-      sessionRestored: "Restored previous session.",
-      loggedOut: "Logged out. You can sign in again when ready.",
-      loginSuccess: "Logged in as {name}.",
-      displayNameRequired: "Display name is required",
-      passwordRequired: "Password is required",
-      unableToLoadDeck: "Unable to load deck: {status}",
-      gameplayReady: "Gameplay ready with {count} card(s) in the deck.",
-      loginFirstDraw: "Login first to draw a card.",
-      deckEmpty: "Deck is empty. Reset the table to load cards again.",
-      loginRequiredRoom: "Login first to create a room.",
-      joinRoomRequired: "Join a room first to use the gameplay workspace.",
-      deckCountLabel: "{count} card{suffix}",
-      roomsLoaded: "Loaded {count} room(s).",
-      unableToLoadRooms: "Unable to load rooms: {status}",
-      roomNameRequired: "Room name is required",
-      maxPlayersRequired: "Enter how many players can join the room.",
-      spectatorsRequired: "Enter how many spectators are allowed (0-10).",
-      createRoomFailed: "Create room failed: {status} {detail}",
-      roomCreated: 'Created room "{name}" (code: {code}).',
-      roomJoined: 'Joined room "{name}" (code: {code}).',
-      unableToJoinRoom: "Unable to join room: {status} {detail}",
-      cardsLoaded: "Loaded {count} card(s).",
-      decksLoaded: "Loaded {count} deck(s).",
-      unableLoadCards: "Unable to load cards: {status}",
-      unableLoadDecks: "Unable to load decks: {status}",
-      createCardFailed: "Create card failed: {status} {detail}",
-      createDeckFailed: "Create deck failed: {status} {detail}",
-      invalidAdminToken: "Invalid admin token.",
-      adminTokenCheckFailed: "Unable to verify admin token: {status}",
-      deleteCardFailed: "Delete card failed: {status} {detail}",
-      deleteDeckFailed: "Delete deck failed: {status} {detail}",
-      exportDeckFailed: "Export failed: {status} {detail}",
-      cardFieldsRequired: "Card name and description are required.",
-      cardCreated: 'Created card "{name}" (#{id}).',
-      deckNameRequired: "Deck name is required.",
-      deckCreated: 'Created deck "{name}" (#{id}).',
-      deleteCardConfirm: "Delete card #{id}?",
-      deleteDeckConfirm: "Delete deck #{id}?",
-      deletedCard: "Deleted card #{id}.",
-      deletedDeck: "Deleted deck #{id}.",
-      exportedDeck: "Exported deck #{id}:\n{payload}",
-      deckImported: 'Imported deck "{name}" (#{id}).',
-      importDeckInvalid: "Provide valid deck JSON to import.",
-      importDeckFailed: "Import failed: {status} {detail}",
-      ready: "Ready. Set your API base URL, register or sign in, or manage decks with the admin token.",
-      loginFailed: "Login failed: {status}",
-      registrationSuccess: "Registered as {name}.",
-    },
-  },
-  uk: {
-    title: "Вебклієнт JOJ Game",
-    subtitle: "Працюйте з сервером FastAPI просто у браузері.",
-    layout: {
-      game: {
-        heading: "Ігрове лобі",
-        subheading:
-          "Створюйте або переглядайте кімнати та працюйте з ігровим простором.",
-      },
-      admin: {
-        heading: "Адміністративні інструменти",
-        subheading:
-          "Керуйте картами та колодами за допомогою адмін-токена від сервера.",
-      },
-      management: {
-        heading: "Центр керування",
-        subheading:
-          "Оберіть модуль для керування: система, гравці, карти чи колоди.",
-      },
-    },
-    language: { label: "Мова" },
-    server: {
-      heading: "Підключення до сервера",
-      apiBase: "Базова адреса API",
-      hint: "Змініть, якщо сервер працює на іншому хості чи порту.",
-    },
-    admin: {
-      heading: "Доступ адміністратора",
-      token: "Адмін-токен",
-      tokenPlaceholder: "Вставте значення ADMIN_TOKEN із сервера",
-      hint1: "Потрібен для API /admin. Зберігається лише під час сеансу сторінки.",
-      hint2: "Інструменти адміністратора з'являються після введення токена.",
-      loadData: "Завантажити карти та колоди",
-      status: {
-        idle: "Введіть адмін-токен, щоб розблокувати інструменти.",
-        checking: "Перевіряємо адмін-токен...",
-        valid: "Адмін-токен підтверджено.",
-        invalid: "Адмін-токен недійсний.",
-      },
-    },
-    login: {
-      heading: "Гостьовий вхід",
-      displayName: "Ім'я гравця",
-      displayNamePlaceholder: "Стратег",
-      password: "Пароль",
-      passwordPlaceholder: "Введіть пароль",
-      register: "Зареєструватися",
-      submit: "Увійти",
-      notSignedIn: "Ще не увійшли.",
-    },
-    rooms: {
-      create: {
-        heading: "Створити кімнату",
-        name: "Назва кімнати",
-        namePlaceholder: "Брифінг",
-        maxPlayers: "Максимум гравців (2-6)",
-        maxSpectators: "Максимум глядачів (0-10)",
-        submit: "Створити кімнату",
-        hint: "Потрібен увійшовший користувач; ваш токен додається автоматично.",
-      },
-      list: {
-        heading: "Кімнати",
-        refresh: "Оновити",
-        empty: "Немає кімнат. Створіть першу!",
-      },
-      meta: {
-        host: "Хост",
-        name: "Назва",
-        code: "Код",
-        players: "Гравців",
-        spectators: "Глядачів",
-        visibility: "Видимість",
-        status: "Статус",
-        joinable: "Можна приєднатися",
-        created: "Створено",
-      },
-      status: { active: "Активна", archived: "В архіві" },
-      join: {
-        cta: "Приєднатися",
-        joined: "Приєднано",
-        current: "Поточна кімната",
-        joinable: "Так",
-        closed: "Закрито",
-        full: "Заповнено",
-      },
-    },
-    game: {
-      heading: "Робочий простір гри",
-      draw: "Взяти карту",
-      reset: "Перезавантажити стіл",
-      hint:
-        "Доступно після приєднання до кімнати. Карти беруться з сервера, щоб ви могли тягнути та розкладати їх локально.",
-      deck: {
-        heading: "Колода",
-        hint: "Натисніть \"Взяти карту\", щоб додати карту до руки.",
-        empty: "Колода порожня",
-      },
-      hand: {
-        heading: "Рука",
-        empty: "Візьміть карти, щоб побачити їх у руці.",
-        moveToWorkspace: "До робочого поля",
-      },
-      workspace: {
-        heading: "Робоче поле",
-        empty: "Перемістіть карти сюди, щоб спланувати хід.",
-        returnToHand: "Повернути в руку",
-      },
-      resources: {
-        time: "Час",
-        reputation: "Репутація",
-        discipline: "Дисципліна",
-        documents: "Документи",
-        technology: "Технології",
-      },
-    },
-    cards: {
-      heading: "Карти",
-      refresh: "Оновити",
-      form: {
-        name: "Назва",
-        namePlaceholder: "Неочікувана подія",
-        description: "Опис",
-        descriptionPlaceholder: "Щось несподіване стається",
-        category: "Категорія (необов'язково)",
-        categoryPlaceholder: "хаос",
-        time: "Час",
-        timePlaceholder: "+1 або -1",
-        reputation: "Репутація",
-        reputationPlaceholder: "+1 або -1",
-        discipline: "Дисципліна",
-        disciplinePlaceholder: "+1 або -1",
-        documents: "Документи",
-        documentsPlaceholder: "+1 або -1",
-        technology: "Технології",
-        technologyPlaceholder: "+1 або -1",
-        submit: "Створити карту",
-      },
-      listEmpty: "Карт ще немає. Створіть першу вище.",
-      noCategory: "Без категорії",
-      noEffects: "Без зміни ресурсів",
-      delete: "Видалити",
-    },
-    decks: {
-      heading: "Колоди",
-      refresh: "Оновити",
-      form: {
-        name: "Назва",
-        namePlaceholder: "Стартова колода",
-        description: "Опис (необов'язково)",
-        descriptionPlaceholder: "Базові карти",
-        cardIds: "ID карток (через кому)",
-        cardIdsPlaceholder: "1,2,3",
-        submit: "Створити колоду",
-      },
-      listEmpty: "Колоди відсутні. Створіть одну вище.",
-      noDescription: "Без опису",
-      noCards: "Карт не призначено",
-      export: "Експорт JSON",
-      import: {
-        label: "Імпортувати колоду з JSON",
-        placeholder: '{"deck": {"name": "Стартова", "card_ids": []}, "cards": []}',
-        hint: "Вставте експортований JSON, щоб відновити колоди та карти.",
-        submit: "Імпортувати JSON",
-      },
-      delete: "Видалити",
-    },
-    status: { heading: "Статус" },
-    session: {
-      apiLabel: "API база",
-      userLabel: "Користувач",
-      userGuest: "Гість (не авторизовано)",
-      roomLabel: "Кімната",
-      roomNone: "Не приєднано",
-      adminLabel: "Адмін",
-      adminMissing: "Немає токена",
-    },
-    messages: {
-      adminTokenRequired: "Спочатку введіть адмін-токен.",
-      sessionExpired: "Сесію завершено. Увійдіть ще раз.",
-      sessionRestored: "Попередню сесію відновлено.",
-      loggedOut: "Ви вийшли із сеансу. Можете увійти знову, коли будете готові.",
-      loginSuccess: "Увійшли як {name}.",
-      displayNameRequired: "Потрібно вказати ім'я гравця",
-      passwordRequired: "Потрібно ввести пароль",
-      unableToLoadDeck: "Не вдалося завантажити колоду: {status}",
-      gameplayReady: "Ігровий простір готовий: {count} карт(и) у колоді.",
-      loginFirstDraw: "Спершу увійдіть, щоб тягнути карти.",
-      deckEmpty: "Колода порожня. Перезавантажте стіл, щоб завантажити карти знову.",
-      loginRequiredRoom: "Спершу увійдіть, щоб створити кімнату.",
-      joinRoomRequired: "Приєднайтеся до кімнати, щоб користуватися ігровим простором.",
-      deckCountLabel: "{count} карт(и)",
-      roomsLoaded: "Завантажено {count} кімнат(и).",
-      unableToLoadRooms: "Не вдалося завантажити кімнати: {status}",
-      roomNameRequired: "Потрібна назва кімнати",
-      maxPlayersRequired: "Вкажіть, скільки гравців може приєднатися.",
-      spectatorsRequired: "Вкажіть, скільки глядачів дозволено (0-10).",
-      createRoomFailed: "Не вдалося створити кімнату: {status} {detail}",
-      roomCreated: 'Створено кімнату "{name}" (код: {code}).',
-      roomJoined: 'Приєднано до кімнати "{name}" (код: {code}).',
-      unableToJoinRoom: "Не вдалося приєднатися: {status} {detail}",
-      cardsLoaded: "Завантажено {count} карт(и).",
-      decksLoaded: "Завантажено {count} колод(и).",
-      unableLoadCards: "Не вдалося завантажити карти: {status}",
-      unableLoadDecks: "Не вдалося завантажити колоди: {status}",
-      createCardFailed: "Не вдалося створити карту: {status} {detail}",
-      createDeckFailed: "Не вдалося створити колоду: {status} {detail}",
-      invalidAdminToken: "Невірний адмін-токен.",
-      adminTokenCheckFailed: "Не вдалося перевірити адмін-токен: {status}",
-      deleteCardFailed: "Не вдалося видалити карту: {status} {detail}",
-      deleteDeckFailed: "Не вдалося видалити колоду: {status} {detail}",
-      exportDeckFailed: "Не вдалося експортувати: {status} {detail}",
-      deckImported: 'Імпортовано колоду "{name}" (#{id}).',
-      importDeckInvalid: "Додайте коректний JSON для імпорту.",
-      importDeckFailed: "Не вдалося імпортувати: {status} {detail}",
-      cardFieldsRequired: "Потрібно вказати назву та опис карти.",
-      cardCreated: 'Карту "{name}" (#{id}) створено.',
-      deckNameRequired: "Потрібно вказати назву колоди.",
-      deckCreated: 'Колоду "{name}" (#{id}) створено.',
-      deleteCardConfirm: "Видалити карту #{id}?",
-      deleteDeckConfirm: "Видалити колоду #{id}?",
-      deletedCard: "Карту #{id} видалено.",
-      deletedDeck: "Колоду #{id} видалено.",
-      exportedDeck: "Експорт колоди #{id}:\n{payload}",
-      ready:
-        "Готово. Задайте базову адресу API, зареєструйтеся або увійдіть, чи керуйте колодами з адмін-токеном.",
-      loginFailed: "Помилка входу: {status}",
-      registrationSuccess: "Зареєстровано як {name}.",
-    },
-  },
-};
-
-let currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "en";
+const currentLanguage = getLanguage();
 // ==========================
 // BLOCK 3 — DOM ELEMENTS & UI HOOKS
 // ==========================
@@ -557,57 +94,17 @@ function getCurrentRoomCode() {
   return Rooms.getCurrentRoomCode() || state.currentRoom;
 }
 
-await initI18n();
-document.body.dispatchEvent(new Event("translationsReady"));
-
-function resolveTranslation(key, language = currentLanguage) {
-  const parts = key.split(".");
-  let value = TRANSLATIONS[language];
-  for (const part of parts) {
-    if (!value || typeof value !== "object" || !(part in value)) {
-      value = null;
-      break;
-    }
-    value = value[part];
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  if (language !== "en") {
-    return resolveTranslation(key, "en");
-  }
-  return key;
-}
-
-function formatTranslation(template, vars = {}) {
-  return template.replace(/\{(\w+)\}/g, (match, name) => {
-    if (name in vars) {
-      return vars[name];
-    }
-    return match;
-  });
-}
-
-
-// [LEGACY TRANSLATION]
-// This function is part of the old translation system.
-// New UI uses modules/i18n.js → function T(key).
-// Do not extend or modify this function anymore.
-//function t(key, vars = {}) {
-//  const template = resolveTranslation(key);
-//  return formatTranslation(template, vars);
-//}
-
-function applyTranslations() {
-  document.documentElement.lang = currentLanguage;
-  document.querySelectorAll("[data-i18n]").forEach((node) => {
-    const value = t(node.dataset.i18n);
-    node.textContent = value;
-  });
-  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
-    const value = t(node.dataset.i18nPlaceholder);
-    node.placeholder = value;
-  });
+function applyLanguage(language) {
+  const selected = language || getLanguage();
+  setLanguage(selected);
+  UI.setLanguageSelector(selected);
+  UI.updateAllLabels();
+  setUserInfo();
+  renderResources();
+  renderDeckCount();
+  renderHand();
+  renderWorkspace();
+  syncAdminUi();
   syncSessionBar();
 }
 
@@ -628,24 +125,27 @@ function syncNavLinks() {
   const isLoggedIn = Boolean(getAuthToken() && getCurrentUser());
 
   if (navLoginLink) {
-    navLoginLink.textContent = "LOGIN";
+    navLoginLink.textContent = t("nav.login");
     navLoginLink.hidden = isLoggedIn;
   }
 
   if (navGameLink) {
-    navGameLink.textContent = "GAME";
+    navGameLink.textContent = t("nav.game");
     navGameLink.hidden = !isLoggedIn;
   }
 
   if (navManagementLink) {
+    navManagementLink.textContent = t("nav.management");
     navManagementLink.hidden = true;
   }
 
   if (navAdminLink) {
+    navAdminLink.textContent = t("nav.admin");
     navAdminLink.hidden = true;
   }
 
   if (navLogoutButton) {
+    navLogoutButton.textContent = t("nav.logout");
     navLogoutButton.hidden = !isLoggedIn;
     navLogoutButton.disabled = !isLoggedIn;
   }
@@ -748,24 +248,6 @@ function clearFieldErrors(...targets) {
   targets.filter(Boolean).forEach((target) => setFieldError(target));
 }
 
-
-function setLanguage(language) {
-  if (!TRANSLATIONS[language]) {
-    return;
-  }
-  currentLanguage = language;
-  localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
-  if (languageSelector) {
-    languageSelector.value = language;
-  }
-  applyTranslations();
-  setUserInfo();
-  renderResources();
-  renderDeckCount();
-  renderHand();
-  renderWorkspace();
-  syncAdminUi();
-}
 
 function log(message, isError = false) {
   const prefix = new Date().toLocaleTimeString();
@@ -1741,7 +1223,7 @@ function wireEvents() {
     resetGameplayButton.addEventListener("click", () => prepareGameplayArea(true));
   if (languageSelector)
     languageSelector.addEventListener("change", (event) => {
-      setLanguage(event.target.value);
+      applyLanguage(event.target.value);
     });
   if (navLogoutButton) navLogoutButton.addEventListener("click", logoutUser);
 }
@@ -1749,7 +1231,7 @@ function wireEvents() {
 Rooms.syncCurrentRoom();
 
 persistApiBase();
-setLanguage(currentLanguage);
+applyLanguage(currentLanguage);
 wireEvents();
 scheduleAdminTokenValidation();
 setUserInfo();
