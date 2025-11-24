@@ -1,73 +1,77 @@
 // modules/auth.js
 
-import { API } from "./api.js";
+import { loginGuest, registerGuest } from "./api.js";
 import { state } from "./state.js";
 
-// LocalStorage keys
-const TOKEN_KEY = "joj_token";
-const USER_KEY = "joj_user";
+const STORAGE_KEYS = {
+  authToken: "joj-auth-token",
+  user: "joj-user",
+};
 
-// --- SESSION LOADING ---
+export async function login({ apiBase = "", displayName, password }) {
+  if (!displayName || !password) {
+    const error = new Error("MISSING_CREDENTIALS");
+    throw error;
+  }
 
-export function loadSession() {
-    const token = localStorage.getItem(TOKEN_KEY);
-    const userRaw = localStorage.getItem(USER_KEY);
+  const data = await loginGuest({ apiBase, displayName, password });
+  const token = data?.access_token;
+  const user = data?.user;
 
-    if (!token) return false;
+  if (!token || !user) {
+    throw new Error("INVALID_AUTH_RESPONSE");
+  }
 
-    try {
-        const user = JSON.parse(userRaw);
-        API.setToken(token);
-        state.setToken(token);
-        state.setUser(user);
-        return true;
-    } catch {
-        return false;
-    }
+  return { token, user };
 }
 
-// --- LOGIN ---
+export async function register({ apiBase = "", displayName, password }) {
+  if (!displayName || !password) {
+    const error = new Error("MISSING_CREDENTIALS");
+    throw error;
+  }
 
-export async function login(username) {
-    if (!username || username.trim().length < 1) {
-        throw new Error("INVALID_USERNAME");
-    }
+  const data = await registerGuest({ apiBase, displayName, password });
+  const token = data?.access_token;
+  const user = data?.user;
 
-    // Guest login for now
-    const payload = { provider: "guest", username };
+  if (!token || !user) {
+    throw new Error("INVALID_AUTH_RESPONSE");
+  }
 
-    const result = await API.post("/auth/login", payload);
-
-    if (!result?.token || !result?.user) {
-        throw new Error("INVALID_SERVER_RESPONSE");
-    }
-
-    // Save locally
-    localStorage.setItem(TOKEN_KEY, result.token);
-    localStorage.setItem(USER_KEY, JSON.stringify(result.user));
-
-    // Update state + API
-    API.setToken(result.token);
-    state.setToken(result.token);
-    state.setUser(result.user);
-
-    return result.user;
+  return { token, user };
 }
 
-// --- LOGOUT ---
+export function setAuthSession(token, user) {
+  if (token && user) {
+    localStorage.setItem(STORAGE_KEYS.authToken, token);
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
+    state.setToken(token);
+    state.setUser(user);
+    return;
+  }
+  localStorage.removeItem(STORAGE_KEYS.authToken);
+  localStorage.removeItem(STORAGE_KEYS.user);
+  state.setToken(null);
+  state.setUser(null);
+}
+
+export function restoreSession() {
+  const token = localStorage.getItem(STORAGE_KEYS.authToken);
+  const rawUser = localStorage.getItem(STORAGE_KEYS.user);
+  if (!token || !rawUser) {
+    return null;
+  }
+
+  try {
+    const user = JSON.parse(rawUser);
+    return { token, user };
+  } catch (error) {
+    setAuthSession(null, null);
+    return null;
+  }
+}
 
 export function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-
-    API.setToken(null);
-    state.setToken(null);
-    state.setUser(null);
-}
-
-// --- INIT AUTH FLOW ---
-
-// Safe initialization that does not break legacy code
-export function initAuth() {
-    loadSession();
+  setAuthSession(null, null);
 }

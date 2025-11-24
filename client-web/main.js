@@ -3,6 +3,18 @@
 // ==========================
 import { t, initI18n } from "./modules/i18n.js";
 import * as UI from "./modules/ui.js";
+import {
+  login as authLogin,
+  register as authRegister,
+  logout as authLogout,
+  restoreSession as restoreStoredSession,
+  setAuthSession as persistAuthSession,
+} from "./modules/auth.js";
+import * as API from "./modules/api.js";
+import * as Rooms from "./modules/rooms.js";
+import { state } from "./modules/state.js";
+import * as Game from "./modules/game.js";
+import * as Validation from "./modules/validation.js";
 
 initI18n();
 window.t = t;
@@ -13,10 +25,7 @@ UI.updateAllLabels();
 // ==========================
 
 const STORAGE_KEYS = {
-  authToken: "joj-auth-token",
-  user: "joj-user",
   apiBase: "joj-api-base",
-  roomCode: "joj-room-code",
 };
 
 const LANGUAGE_STORAGE_KEY = "joj-language";
@@ -530,27 +539,23 @@ const resetGameplayButton = document.getElementById("resetGameplay");
 const languageSelector = document.getElementById("languageSelector");
 const loginPasswordInput = document.getElementById("loginPassword");
 
-let authToken = null;
-let currentUser = null;
-let currentRoomCode = localStorage.getItem(STORAGE_KEYS.roomCode);
-let deckCards = [];
-let handCards = [];
-let workspaceCards = [];
 let adminTokenStatus = { value: "", isValid: false, isChecking: false };
 let adminValidationTimer = null;
 let toastTimer = null;
 
-const STARTING_RESOURCES = {
-  time: 1,
-  reputation: 1,
-  discipline: 1,
-  documents: 1,
-  technology: 1,
-};
+const RESOURCE_KEYS = Game.RESOURCE_KEYS;
 
-const RESOURCE_KEYS = ["time", "reputation", "discipline", "documents", "technology"];
+function getAuthToken() {
+  return state.token;
+}
 
-let playerResources = { ...STARTING_RESOURCES };
+function getCurrentUser() {
+  return state.user;
+}
+
+function getCurrentRoomCode() {
+  return Rooms.getCurrentRoomCode() || state.currentRoom;
+}
 
 await initI18n();
 document.body.dispatchEvent(new Event("translationsReady"));
@@ -620,7 +625,7 @@ function setChipText(chip, { label, value, tone = null, hidden = false }) {
 }
 
 function syncNavLinks() {
-  const isLoggedIn = Boolean(authToken && currentUser);
+  const isLoggedIn = Boolean(getAuthToken() && getCurrentUser());
 
   if (navLoginLink) {
     navLoginLink.textContent = "LOGIN";
@@ -648,7 +653,7 @@ function syncNavLinks() {
 
 function syncSessionBar() {
   if (sessionApiChip && apiBaseInput) {
-    const apiValue = apiBaseInput.value.trim() || t("session.userGuest");
+    const apiValue = state.apiBase?.trim() || apiBaseInput.value.trim() || t("session.userGuest");
     setChipText(sessionApiChip, {
       label: t("session.apiLabel"),
       value: apiValue,
@@ -657,21 +662,22 @@ function syncSessionBar() {
   }
 
   if (sessionUserChip) {
-    const isLoggedIn = Boolean(currentUser && authToken);
+    const user = getCurrentUser();
+    const isLoggedIn = Boolean(user && getAuthToken());
     setChipText(sessionUserChip, {
       label: t("session.userLabel"),
-      value: isLoggedIn
-        ? `${currentUser.display_name} (#${currentUser.id})`
-        : t("session.userGuest"),
+      value: isLoggedIn ? `${user.display_name} (#${user.id})` : t("session.userGuest"),
       tone: isLoggedIn ? "success" : "warning",
     });
   }
 
   if (sessionRoomChip) {
+    const currentRoomCode = getCurrentRoomCode();
+    const hasUser = Boolean(getCurrentUser());
     setChipText(sessionRoomChip, {
       label: t("session.roomLabel"),
       value: currentRoomCode || t("session.roomNone"),
-      hidden: !currentUser && !currentRoomCode,
+      hidden: !hasUser && !currentRoomCode,
       tone: currentRoomCode ? "success" : "warning",
     });
   }
@@ -779,16 +785,16 @@ function log(message, isError = false) {
   }
 }
 
+function translateValidationError(error) {
+  if (error instanceof Validation.ValidationError) {
+    return t(`messages.${error.code}`);
+  }
+  return null;
+}
+
 function setRoomFormError(message) {
   if (!roomFormError) return;
   roomFormError.textContent = message || "";
-}
-
-function apiUrl(path) {
-  if (!apiBaseInput) {
-    return path;
-  }
-  return `${apiBaseInput.value.replace(/\/$/, "")}${path}`;
 }
 
 function persistApiBase() {
@@ -796,88 +802,42 @@ function persistApiBase() {
   const savedApiBase = localStorage.getItem(STORAGE_KEYS.apiBase);
   if (savedApiBase) {
     apiBaseInput.value = savedApiBase;
+    API.setApiBase(savedApiBase);
   }
+  API.setApiBase(apiBaseInput.value.trim());
   apiBaseInput.addEventListener("input", () => {
     localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
+    API.setApiBase(apiBaseInput.value.trim());
     syncSessionBar();
   });
   syncSessionBar();
 }
 
 function requireAdminToken() {
-  if (!adminTokenInput) {
-    throw new Error(t("messages.adminTokenRequired"));
-  }
-  const token = adminTokenInput.value.trim();
-  if (!token) {
-    throw new Error(t("messages.adminTokenRequired"));
-  }
-  if (!adminTokenStatus.isValid || adminTokenStatus.value !== token) {
-    throw new Error(t("messages.invalidAdminToken"));
-  }
-  return token;
+  const token = adminTokenInput?.value.trim();
+  return Validation.ensureAdminToken({
+    token,
+    isValid: adminTokenStatus.isValid && adminTokenStatus.value === token,
+  });
 }
-// [AUTH BLOCK]
 
-function setAuthSession(token, user) {
-  authToken = token;
-  currentUser = user;
-  if (token && user) {
-    localStorage.setItem(STORAGE_KEYS.authToken, token);
-    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
-  } else {
-    localStorage.removeItem(STORAGE_KEYS.authToken);
-    localStorage.removeItem(STORAGE_KEYS.user);
-    setCurrentRoom(null);
-    resetGameplayState();
+function applyAuthSession(token, user) {
+  persistAuthSession(token, user);
+  if (!token) {
+    Rooms.setCurrentRoom(null);
   }
   syncSessionBar();
 }
 
-function setCurrentRoom(roomCode) {
-  const normalized = roomCode || null;
-  const previous = currentRoomCode;
-  currentRoomCode = normalized;
-  if (normalized) {
-    localStorage.setItem(STORAGE_KEYS.roomCode, normalized);
-  } else {
-    localStorage.removeItem(STORAGE_KEYS.roomCode);
-  }
-  if (previous !== normalized) {
-    resetGameplayState();
-  }
+state.on("currentRoomChanged", (roomCode) => {
+  resetGameplayState();
   setUserInfo();
   syncSessionBar();
-}
+});
 
-function syncRoomSelection(rooms) {
-  const joinedCodes = rooms.filter((room) => room.is_joined).map((room) => room.code);
-  if (joinedCodes.includes(currentRoomCode)) {
-    return;
-  }
-  if (joinedCodes.length) {
-    setCurrentRoom(joinedCodes[0]);
-  } else {
-    setCurrentRoom(null);
-  }
-}
-
-function requireRoomMembership(showMessage = true) {
-  if (!currentRoomCode) {
-    if (showMessage) {
-      log(t("messages.joinRoomRequired"), true);
-    }
-    return false;
-  }
-  return true;
-}
-
-function adminHeaders() {
-  return {
-    "Content-Type": "application/json",
-    "X-Admin-Token": requireAdminToken(),
-  };
-}
+state.on("roomsUpdated", (rooms) => {
+  renderRooms(rooms);
+});
 
 function scheduleAdminTokenValidation() {
   if (!adminTokenInput) return;
@@ -900,21 +860,15 @@ async function validateAdminToken() {
   adminTokenStatus.isChecking = true;
   syncAdminUi();
   try {
-    const response = await fetch(apiUrl("/admin/verify"), {
-      headers: { "X-Admin-Token": token },
-    });
+    await API.verifyAdminToken(token);
     if (adminTokenStatus.value !== token) {
       return;
     }
-    if (!response.ok) {
-      adminTokenStatus.isValid = false;
-      log(t("messages.adminTokenCheckFailed", { status: response.status }), true);
-    } else {
-      adminTokenStatus.isValid = true;
-    }
+    adminTokenStatus.isValid = true;
   } catch (error) {
     adminTokenStatus.isValid = false;
-    log(error.message, true);
+    const status = error.status ?? "unknown";
+    log(t("messages.adminTokenCheckFailed", { status }), true);
   } finally {
     adminTokenStatus.isChecking = false;
     syncAdminUi();
@@ -952,28 +906,31 @@ function syncAdminUi() {
 
 function setUserInfo() {
   if (!userInfo) return;
-  if (!currentUser) {
+  const user = getCurrentUser();
+  if (!user) {
     userInfo.textContent = t("login.notSignedIn");
     syncSessionBar();
     return;
   }
-  const roomNote = currentRoomCode
-    ? ` | ${t("rooms.meta.code")}: <strong>${currentRoomCode}</strong>`
+  const roomCode = getCurrentRoomCode();
+  const roomNote = roomCode
+    ? ` | ${t("rooms.meta.code")}: <strong>${roomCode}</strong>`
     : "";
-  userInfo.innerHTML = `<strong>${currentUser.display_name}</strong> (ID: ${currentUser.id})${roomNote}`;
+  userInfo.innerHTML = `<strong>${user.display_name}</strong> (ID: ${user.id})${roomNote}`;
   syncSessionBar();
 }
 // [AUTH BLOCK]
 
 function handleAuthFailure() {
   log(t("messages.sessionExpired"), true);
-  setAuthSession(null, null);
+  applyAuthSession(null, null);
   setUserInfo();
 }
 // [AUTH BLOCK]
 
 function logoutUser() {
-  setAuthSession(null, null);
+  authLogout();
+  applyAuthSession(null, null);
   setUserInfo();
   log(t("messages.loggedOut"));
   if (pageName !== "auth") {
@@ -981,24 +938,25 @@ function logoutUser() {
   }
 }
 
+function renderGameplaySnapshot(snapshot = Game.getSnapshot()) {
+  renderResources(snapshot.resources);
+  renderDeckCount(snapshot.deckCount);
+  renderHand(snapshot.hand);
+  renderWorkspace(snapshot.workspace);
+}
+
 function resetGameplayState() {
-  deckCards = [];
-  handCards = [];
-  workspaceCards = [];
-  playerResources = { ...STARTING_RESOURCES };
+  const snapshot = Game.reset();
   if (gameSection) {
     gameSection.hidden = true;
   }
-  renderResources();
-  renderDeckCount();
-  renderHand();
-  renderWorkspace();
+  renderGameplaySnapshot(snapshot);
 }
 
-function renderResources() {
+function renderResources(resources = Game.getSnapshot().resources) {
   if (!resourceBar) return;
   resourceBar.innerHTML = "";
-  Object.entries(playerResources).forEach(([key, value]) => {
+  Object.entries(resources).forEach(([key, value]) => {
     const pill = document.createElement("div");
     pill.className = "resource-pill";
     const label = t(`game.resources.${key}`);
@@ -1007,12 +965,12 @@ function renderResources() {
   });
 }
 
-function renderDeckCount() {
+function renderDeckCount(count = Game.getSnapshot().deckCount) {
   if (!deckCount) return;
-  deckCount.textContent = deckCards.length
+  deckCount.textContent = count
     ? t("messages.deckCountLabel", {
-        count: deckCards.length,
-        suffix: deckCards.length === 1 ? "" : "s",
+        count,
+        suffix: count === 1 ? "" : "s",
       })
     : t("game.deck.empty");
 }
@@ -1057,9 +1015,9 @@ function renderCardList(target, cards, options) {
   });
 }
 
-function renderHand() {
+function renderHand(cards = Game.getSnapshot().hand) {
   if (!handList) return;
-  renderCardList(handList, handCards, {
+  renderCardList(handList, cards, {
     emptyText: t("game.hand.empty"),
     actions: [
       {
@@ -1070,9 +1028,9 @@ function renderHand() {
   });
 }
 
-function renderWorkspace() {
+function renderWorkspace(cards = Game.getSnapshot().workspace) {
   if (!workspaceList) return;
-  renderCardList(workspaceList, workspaceCards, {
+  renderCardList(workspaceList, cards, {
     emptyText: t("game.workspace.empty"),
     actions: [
       {
@@ -1083,132 +1041,100 @@ function renderWorkspace() {
   });
 }
 
-function shuffleDeck(cards) {
-  const copy = [...cards];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-
 async function prepareGameplayArea(warnIfNotJoined = false) {
-  if (!authToken || !gameSection || !currentRoomCode) {
-    if (gameSection) {
-      gameSection.hidden = true;
-    }
-    if (warnIfNotJoined && !currentRoomCode) {
-      log(t("messages.joinRoomRequired"), true);
-    }
-    return;
-  }
   try {
-    const response = await fetch(apiUrl("/cards"));
-    if (!response.ok) {
-      throw new Error(t("messages.unableToLoadDeck", { status: response.status }));
-    }
-    const cards = await response.json();
-    deckCards = shuffleDeck(cards);
-    handCards = [];
-    workspaceCards = [];
-    playerResources = { ...STARTING_RESOURCES };
+    const snapshot = await Game.prepare();
     if (gameSection) {
       gameSection.hidden = false;
     }
-    renderResources();
-    renderDeckCount();
-    renderHand();
-    renderWorkspace();
-    log(t("messages.gameplayReady", { count: deckCards.length }));
+    renderGameplaySnapshot(snapshot);
+    log(t("messages.gameplayReady", { count: snapshot.deckCount }));
   } catch (error) {
-    log(error.message, true);
+    if (error.code === Game.ERROR_CODES.AUTH_REQUIRED) {
+      resetGameplayState();
+      if (warnIfNotJoined) {
+        log(t("messages.loginFirstDraw"), true);
+      }
+      return;
+    }
+    if (error.code === Game.ERROR_CODES.ROOM_REQUIRED) {
+      resetGameplayState();
+      if (warnIfNotJoined) {
+        log(t("messages.joinRoomRequired"), true);
+      }
+      return;
+    }
+    const status = error.status ?? "unknown";
+    log(t("messages.unableToLoadDeck", { status }), true);
   }
 }
 
 async function joinRoom(roomCode) {
-  if (!authToken) {
-    log(t("messages.loginRequiredRoom"), true);
+  try {
+    Validation.ensureAuthToken(getAuthToken());
+  } catch (error) {
+    const message = translateValidationError(error) || error.message;
+    log(message, true);
     return;
   }
   try {
-    const response = await fetch(apiUrl(`/rooms/${roomCode}/join`), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ as_spectator: false }),
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      if (response.status === 401) {
-        handleAuthFailure();
-      }
-      throw new Error(
-        t("messages.unableToJoinRoom", { status: response.status, detail: errText })
-      );
-    }
-    const room = await response.json();
-    setCurrentRoom(room.code);
+    const room = await Rooms.joinRoom(roomCode);
     log(t("messages.roomJoined", { name: room.name, code: room.code }));
-    await loadRooms();
     await prepareGameplayArea();
   } catch (error) {
-    log(error.message, true);
+    if (error.status === 401) {
+      handleAuthFailure();
+    }
+    const detail = error.body || error.message;
+    log(t("messages.unableToJoinRoom", { status: error.status ?? "unknown", detail }), true);
   }
 }
 
 function drawFromDeck() {
-  if (!authToken) {
-    log(t("messages.loginFirstDraw"), true);
-    return;
+  try {
+    const snapshot = Game.drawCard();
+    renderDeckCount(snapshot.deckCount);
+    renderHand(snapshot.hand);
+  } catch (error) {
+    if (error.code === Game.ERROR_CODES.AUTH_REQUIRED) {
+      log(t("messages.loginFirstDraw"), true);
+      return;
+    }
+    if (error.code === Game.ERROR_CODES.ROOM_REQUIRED) {
+      log(t("messages.joinRoomRequired"), true);
+      return;
+    }
+    if (error.code === Game.ERROR_CODES.DECK_EMPTY) {
+      log(t("messages.deckEmpty"), true);
+      return;
+    }
+    throw error;
   }
-  if (!requireRoomMembership(true)) {
-    return;
-  }
-  if (!deckCards.length) {
-    log(t("messages.deckEmpty"), true);
-    return;
-  }
-  const card = deckCards.pop();
-  handCards.push(card);
-  renderDeckCount();
-  renderHand();
 }
 
 function moveHandToWorkspace(cardId) {
-  const index = handCards.findIndex((card) => card.id === cardId);
-  if (index === -1) return;
-  const [card] = handCards.splice(index, 1);
-  workspaceCards.push(card);
-  renderHand();
-  renderWorkspace();
+  const snapshot = Game.moveHandToWorkspace(cardId);
+  renderHand(snapshot.hand);
+  renderWorkspace(snapshot.workspace);
 }
 
 function moveWorkspaceToHand(cardId) {
-  const index = workspaceCards.findIndex((card) => card.id === cardId);
-  if (index === -1) return;
-  const [card] = workspaceCards.splice(index, 1);
-  handCards.push(card);
-  renderWorkspace();
-  renderHand();
+  const snapshot = Game.moveWorkspaceToHand(cardId);
+  renderWorkspace(snapshot.workspace);
+  renderHand(snapshot.hand);
 }
 
-async function restoreSession() {
-  const savedToken = localStorage.getItem(STORAGE_KEYS.authToken);
-  const savedUser = localStorage.getItem(STORAGE_KEYS.user);
-  if (savedToken && savedUser) {
-    try {
-      const parsedUser = JSON.parse(savedUser);
-      setAuthSession(savedToken, parsedUser);
-      setUserInfo();
-      log(t("messages.sessionRestored"));
-      await loadRooms();
-      await prepareGameplayArea();
-    } catch (error) {
-      handleAuthFailure();
-    }
+async function restoreSessionFromStorage() {
+  const restored = restoreStoredSession();
+  if (!restored) {
+    return;
   }
+
+  applyAuthSession(restored.token, restored.user);
+  setUserInfo();
+  log(t("messages.sessionRestored"));
+  await loadRooms();
+  await prepareGameplayArea();
 }
 
 // [AUTH BLOCK]
@@ -1217,25 +1143,22 @@ function getGuestCredentials() {
   if (!displayNameInput || !loginPasswordInput) {
     return null;
   }
-  const displayName = displayNameInput.value.trim();
-  const password = loginPasswordInput.value.trim();
   clearFieldErrors(loginFormError);
-  if (!displayName) {
-    const message = t("messages.displayNameRequired");
+  try {
+    return Validation.validateGuestCredentials({
+      displayName: displayNameInput.value,
+      password: loginPasswordInput.value,
+    });
+  } catch (error) {
+    const message = translateValidationError(error);
+    if (!message) throw error;
     setFieldError(loginFormError, message);
     log(message, true);
     return null;
   }
-  if (!password) {
-    const message = t("messages.passwordRequired");
-    setFieldError(loginFormError, message);
-    log(message, true);
-    return null;
-  }
-  return { displayName, password };
 }
 // [AUTH BLOCK]
-async function authenticateGuest(successMessageKey, button) {
+async function authenticateGuest(successMessageKey, button, authFunction = authLogin) {
   const credentials = getGuestCredentials();
   if (!credentials) return;
 
@@ -1244,25 +1167,18 @@ async function authenticateGuest(successMessageKey, button) {
       if (apiBaseInput) {
         localStorage.setItem(STORAGE_KEYS.apiBase, apiBaseInput.value.trim());
       }
+      API.setApiBase(apiBaseInput?.value.trim() || "");
 
-      const response = await fetch(apiUrl("/auth/login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: "guest",
-          display_name: credentials.displayName,
-          password: credentials.password,
-        }),
+      const { token, user } = await authFunction({
+        apiBase: apiBaseInput?.value.trim() || "",
+        displayName: credentials.displayName,
+        password: credentials.password,
       });
 
-      if (!response.ok) {
-        throw new Error(t("messages.loginFailed", { status: response.status }));
-      }
-
-      const data = await response.json();
       clearFieldErrors(loginFormError);
-      setAuthSession(data.access_token, data.user);
-      log(t(successMessageKey, { name: currentUser.display_name }));
+      applyAuthSession(token, user);
+      const currentUser = getCurrentUser();
+      log(t(successMessageKey, { name: currentUser?.display_name || user.display_name }));
       setUserInfo();
       const redirectTarget = document.body.dataset.redirectAfterAuth;
       if (redirectTarget) {
@@ -1272,7 +1188,9 @@ async function authenticateGuest(successMessageKey, button) {
       await loadRooms();
       await prepareGameplayArea();
     } catch (error) {
-      log(error.message, true);
+      const status = error.status ?? "unknown";
+      const message = t("messages.loginFailed", { status });
+      log(message, true);
     }
   });
 }
@@ -1290,7 +1208,7 @@ async function handleGuestLogin(event) {
 
 async function handleGuestRegistration(event) {
   event.preventDefault();
-  await authenticateGuest("messages.registrationSuccess", event.submitter);
+  await authenticateGuest("messages.registrationSuccess", event.submitter, authRegister);
 }
 // ===== END OF AUTH BLOCK =====
 // ==========================
@@ -1303,32 +1221,23 @@ async function loadRooms(event) {
   const button = event?.currentTarget || refreshRoomsButton;
   await withBusyState(button, async () => {
     try {
-      const headers = {};
-      if (authToken) {
-        headers.Authorization = `Bearer ${authToken}`;
-      }
-      const response = await fetch(apiUrl("/rooms"), { headers });
-      if (!response.ok) {
-        if (response.status === 401) {
-          handleAuthFailure();
-        }
-        throw new Error(t("messages.unableToLoadRooms", { status: response.status }));
-      }
-      const rooms = await response.json();
-      if (authToken) {
-        syncRoomSelection(rooms);
-      }
+      const rooms = await Rooms.loadRooms();
       setUserInfo();
       renderRooms(rooms);
       log(t("messages.roomsLoaded", { count: rooms.length }));
     } catch (error) {
-      log(error.message, true);
+      if (error.status === 401) {
+        handleAuthFailure();
+      }
+      const status = error.status ?? "unknown";
+      log(t("messages.unableToLoadRooms", { status }), true);
     }
   });
 }
 
 function renderRooms(rooms) {
   if (!roomsTableBody) return;
+  const currentRoomCode = getCurrentRoomCode();
   roomsTableBody.innerHTML = "";
   if (!rooms.length) {
     const emptyRow = document.createElement("tr");
@@ -1394,12 +1303,13 @@ function renderRooms(rooms) {
       joinButton.type = "button";
       joinButton.className = "ghost";
       joinButton.textContent = t("rooms.join.cta");
-      joinButton.disabled = !authToken || !room.is_joinable;
+      const token = getAuthToken();
+      joinButton.disabled = !token || !room.is_joinable;
       joinButton.setAttribute("aria-label", `${t("rooms.join.cta")}: ${room.name}`);
       if (!room.is_joinable) {
         joinButton.title = joinableLabel;
       }
-      if (!authToken) {
+      if (!token) {
         joinButton.title = t("messages.loginRequiredRoom");
       }
       joinButton.addEventListener("click", () => joinRoom(room.code));
@@ -1426,65 +1336,35 @@ async function createRoom(event) {
   );
   setRoomFormError("");
   await withBusyState(button, async () => {
-    if (!authToken) {
-      const message = t("messages.loginRequiredRoom");
-      setRoomFormError(message);
-      log(message, true);
-      return;
-    }
-    if (!roomName) {
-      const message = t("messages.roomNameRequired");
-      setRoomFormError(message);
-      log(message, true);
-      return;
-    }
-    if (Number.isNaN(maxPlayers) || maxPlayers < 2 || maxPlayers > 6) {
-      const message = t("messages.maxPlayersRequired");
-      setRoomFormError(message);
-      log(message, true);
-      return;
-    }
-    if (Number.isNaN(maxSpectators) || maxSpectators < 0 || maxSpectators > 10) {
-      const message = t("messages.spectatorsRequired");
+    let payload;
+    try {
+      payload = Validation.validateRoomCreation({
+        token: getAuthToken(),
+        name: roomName,
+        maxPlayers,
+        maxSpectators,
+      });
+    } catch (error) {
+      const message = translateValidationError(error) || error.message;
       setRoomFormError(message);
       log(message, true);
       return;
     }
 
     try {
-      const response = await fetch(apiUrl("/rooms"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          name: roomName,
-          max_players: maxPlayers,
-          max_spectators: maxSpectators,
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        if (response.status === 401) {
-          handleAuthFailure();
-        }
-        throw new Error(
-          t("messages.createRoomFailed", { status: response.status, detail: errText })
-        );
-      }
-
-      const room = await response.json();
-      setCurrentRoom(room.code);
+      const room = await Rooms.createRoom(payload);
       log(t("messages.roomCreated", { name: room.name, code: room.code }));
       document.getElementById("roomName").value = "";
       setRoomFormError("");
-      await loadRooms();
       await prepareGameplayArea();
     } catch (error) {
-      log(error.message, true);
-      setRoomFormError(error.message);
+      if (error.status === 401) {
+        handleAuthFailure();
+      }
+      const detail = error.body || error.message;
+      const message = t("messages.createRoomFailed", { status: error.status ?? "unknown", detail });
+      log(message, true);
+      setRoomFormError(message);
     }
   });
 }
@@ -1597,19 +1477,22 @@ function renderDecks(decks) {
 async function loadCards(event) {
   if (!cardsList || !adminTokenInput) return;
   const button = event?.currentTarget || refreshCardsButton;
+  let adminToken;
+  try {
+    adminToken = requireAdminToken();
+  } catch (error) {
+    const message = translateValidationError(error) || error.message;
+    log(message, true);
+    return;
+  }
   await withBusyState(button, async () => {
     try {
-      const response = await fetch(apiUrl("/admin/cards"), {
-        headers: { "X-Admin-Token": requireAdminToken() },
-      });
-      if (!response.ok) {
-        throw new Error(t("messages.unableLoadCards", { status: response.status }));
-      }
-      const cards = await response.json();
+      const cards = await API.loadAdminCards(adminToken);
       renderCards(cards);
       log(t("messages.cardsLoaded", { count: cards.length }));
     } catch (error) {
-      log(error.message, true);
+      const status = error.status ?? "unknown";
+      log(t("messages.unableLoadCards", { status }), true);
     }
   });
 }
@@ -1621,19 +1504,22 @@ async function loadCards(event) {
 async function loadDecks(event) {
   if (!decksList || !adminTokenInput) return;
   const button = event?.currentTarget || refreshDecksButton;
+  let adminToken;
+  try {
+    adminToken = requireAdminToken();
+  } catch (error) {
+    const message = translateValidationError(error) || error.message;
+    log(message, true);
+    return;
+  }
   await withBusyState(button, async () => {
     try {
-      const response = await fetch(apiUrl("/admin/decks"), {
-        headers: { "X-Admin-Token": requireAdminToken() },
-      });
-      if (!response.ok) {
-        throw new Error(t("messages.unableLoadDecks", { status: response.status }));
-      }
-      const decks = await response.json();
+      const decks = await API.loadAdminDecks(adminToken);
       renderDecks(decks);
       log(t("messages.decksLoaded", { count: decks.length }));
     } catch (error) {
-      log(error.message, true);
+      const status = error.status ?? "unknown";
+      log(t("messages.unableLoadDecks", { status }), true);
     }
   });
 }
@@ -1653,36 +1539,35 @@ async function createCard(event) {
     resourcePayload[key] = Number.isNaN(value) ? 0 : value;
   });
   await withBusyState(button, async () => {
-    if (!name || !description) {
-      log(t("messages.cardFieldsRequired"), true);
+    let payload;
+    try {
+      payload = Validation.validateCardPayload({ name, description, category });
+    } catch (error) {
+      const message = translateValidationError(error) || error.message;
+      log(message, true);
+      return;
+    }
+
+    let adminToken;
+    try {
+      adminToken = requireAdminToken();
+    } catch (error) {
+      const message = translateValidationError(error) || error.message;
+      log(message, true);
       return;
     }
 
     try {
-      const response = await fetch(apiUrl("/admin/cards"), {
-        method: "POST",
-        headers: adminHeaders(),
-        body: JSON.stringify({
-          name,
-          description,
-          category: category || null,
-          ...resourcePayload,
-        }),
+      const card = await API.createCard(adminToken, {
+        ...payload,
+        ...resourcePayload,
       });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(
-          t("messages.createCardFailed", { status: response.status, detail: errText })
-        );
-      }
-
-      const card = await response.json();
       log(t("messages.cardCreated", { name: card.name, id: card.id }));
       cardForm.reset();
       await loadCards();
     } catch (error) {
-      log(error.message, true);
+      const detail = error.body || error.message;
+      log(t("messages.createCardFailed", { status: error.status ?? "unknown", detail }), true);
     }
   });
 }
@@ -1705,91 +1590,92 @@ async function createDeck(event) {
   const cardIdsInput = document.getElementById("deckCardIds").value;
   const card_ids = parseCardIds(cardIdsInput);
   await withBusyState(button, async () => {
-    if (!name) {
-      log(t("messages.deckNameRequired"), true);
+    let payload;
+    try {
+      payload = Validation.validateDeckPayload({ name, description, card_ids });
+    } catch (error) {
+      const message = translateValidationError(error) || error.message;
+      log(message, true);
+      return;
+    }
+
+    let adminToken;
+    try {
+      adminToken = requireAdminToken();
+    } catch (error) {
+      const message = translateValidationError(error) || error.message;
+      log(message, true);
       return;
     }
 
     try {
-      const response = await fetch(apiUrl("/admin/decks"), {
-        method: "POST",
-        headers: adminHeaders(),
-        body: JSON.stringify({ name, description: description || null, card_ids }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(
-          t("messages.createDeckFailed", { status: response.status, detail: errText })
-        );
-      }
-
-      const deck = await response.json();
+      const deck = await API.createDeck(adminToken, payload);
       log(t("messages.deckCreated", { name: deck.name, id: deck.id }));
       deckForm.reset();
       await loadDecks();
     } catch (error) {
-      log(error.message, true);
+      const detail = error.body || error.message;
+      log(t("messages.createDeckFailed", { status: error.status ?? "unknown", detail }), true);
     }
   });
 }
 
 async function deleteCard(cardId) {
   if (!confirm(t("messages.deleteCardConfirm", { id: cardId }))) return;
+  let adminToken;
   try {
-    const response = await fetch(apiUrl(`/admin/cards/${cardId}`), {
-      method: "DELETE",
-      headers: { "X-Admin-Token": requireAdminToken() },
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.deleteCardFailed", { status: response.status, detail: errText })
-      );
-    }
+    adminToken = requireAdminToken();
+  } catch (error) {
+    const message = translateValidationError(error) || error.message;
+    log(message, true);
+    return;
+  }
+  try {
+    await API.deleteCard(adminToken, cardId);
     log(t("messages.deletedCard", { id: cardId }));
     await loadCards();
   } catch (error) {
-    log(error.message, true);
+    const detail = error.body || error.message;
+    log(t("messages.deleteCardFailed", { status: error.status ?? "unknown", detail }), true);
   }
 }
 
 async function deleteDeck(deckId) {
   if (!confirm(t("messages.deleteDeckConfirm", { id: deckId }))) return;
+  let adminToken;
   try {
-    const response = await fetch(apiUrl(`/admin/decks/${deckId}`), {
-      method: "DELETE",
-      headers: { "X-Admin-Token": requireAdminToken() },
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.deleteDeckFailed", { status: response.status, detail: errText })
-      );
-    }
+    adminToken = requireAdminToken();
+  } catch (error) {
+    const message = translateValidationError(error) || error.message;
+    log(message, true);
+    return;
+  }
+  try {
+    await API.deleteDeck(adminToken, deckId);
     log(t("messages.deletedDeck", { id: deckId }));
     await loadDecks();
   } catch (error) {
-    log(error.message, true);
+    const detail = error.body || error.message;
+    log(t("messages.deleteDeckFailed", { status: error.status ?? "unknown", detail }), true);
   }
 }
 
 async function exportDeck(deckId) {
+  let adminToken;
   try {
-    const response = await fetch(apiUrl(`/admin/decks/${deckId}/export`), {
-      headers: { "X-Admin-Token": requireAdminToken() },
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(
-        t("messages.exportDeckFailed", { status: response.status, detail: errText })
-      );
-    }
-    const payload = await response.json();
+    adminToken = requireAdminToken();
+  } catch (error) {
+    const message = translateValidationError(error) || error.message;
+    log(message, true);
+    return;
+  }
+  try {
+    const payload = await API.exportDeck(adminToken, deckId);
     const pretty = JSON.stringify(payload, null, 2);
     log(t("messages.exportedDeck", { id: deckId, payload: pretty }));
   } catch (error) {
-    log(error.message, true);
+    const detail = error.body || error.message;
+    log(t("messages.exportDeckFailed", { status: error.status ?? "unknown", detail }), true);
   }
 }
 
@@ -1797,39 +1683,32 @@ async function importDeck(event) {
   const button = event?.currentTarget || importDeckButton;
   if (!deckImportPayload) return;
   const raw = deckImportPayload.value.trim();
-  if (!raw) {
-    log(t("messages.importDeckInvalid"), true);
-    return;
-  }
-
   let payload;
   try {
-    payload = JSON.parse(raw);
+    payload = Validation.validateDeckImportPayload(raw);
   } catch (error) {
-    log(t("messages.importDeckInvalid"), true);
+    const message = translateValidationError(error) || error.message;
+    log(message, true);
     return;
   }
 
   await withBusyState(button, async () => {
+    let adminToken;
     try {
-      const response = await fetch(apiUrl("/admin/decks/import"), {
-        method: "POST",
-        headers: adminHeaders(),
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(
-          t("messages.importDeckFailed", { status: response.status, detail: errText })
-        );
-      }
-
-      const deck = await response.json();
+      adminToken = requireAdminToken();
+    } catch (error) {
+      const message = translateValidationError(error) || error.message;
+      log(message, true);
+      return;
+    }
+    try {
+      const deck = await API.importDeck(adminToken, payload);
       log(t("messages.deckImported", { name: deck.name, id: deck.id }));
       deckImportPayload.value = "";
       await loadDecks();
     } catch (error) {
-      log(error.message, true);
+      const detail = error.body || error.message;
+      log(t("messages.importDeckFailed", { status: error.status ?? "unknown", detail }), true);
     }
   });
 }
@@ -1867,10 +1746,12 @@ function wireEvents() {
   if (navLogoutButton) navLogoutButton.addEventListener("click", logoutUser);
 }
 
+Rooms.syncCurrentRoom();
+
 persistApiBase();
 setLanguage(currentLanguage);
 wireEvents();
 scheduleAdminTokenValidation();
 setUserInfo();
-restoreSession();
+restoreSessionFromStorage();
 log(t("messages.ready"));

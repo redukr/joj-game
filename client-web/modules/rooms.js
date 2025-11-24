@@ -1,81 +1,78 @@
 // modules/rooms.js
 
-import { API } from "./api.js";
+import * as API from "./api.js";
 import { state } from "./state.js";
-import { renderRoomsTable, renderRoomDetails } from "./ui.js";
 
-// --- LOAD ROOMS ---
+const ROOM_STORAGE_KEY = "joj-room-code";
+
+let currentRoomCode = localStorage.getItem(ROOM_STORAGE_KEY) || null;
+state.setCurrentRoom(currentRoomCode);
+
+function persistRoomCode(code) {
+  if (code) {
+    localStorage.setItem(ROOM_STORAGE_KEY, code);
+  } else {
+    localStorage.removeItem(ROOM_STORAGE_KEY);
+  }
+}
+
+function findSelectedRoom(rooms, roomCode = currentRoomCode) {
+  if (!rooms?.length) return null;
+  const joinedRoom = rooms.find(
+    (room) => room.is_joined && (!roomCode || room.code === roomCode)
+  );
+  if (joinedRoom) return joinedRoom;
+  if (roomCode) {
+    const matching = rooms.find((room) => room.code === roomCode);
+    if (matching) return matching;
+  }
+  return rooms.find((room) => room.is_joined) || null;
+}
+
+function applyRoomSelection(roomCode, rooms = state.rooms) {
+  const normalized = roomCode || null;
+  currentRoomCode = normalized;
+  persistRoomCode(normalized);
+  state.setCurrentRoom(normalized);
+  const selected = findSelectedRoom(rooms, normalized);
+  state.selectRoom(selected || null);
+  return normalized;
+}
+
+export function getCurrentRoomCode() {
+  return state.currentRoom || currentRoomCode;
+}
+
+export function setCurrentRoom(roomCode, rooms = state.rooms) {
+  return applyRoomSelection(roomCode, rooms);
+}
+
+export function syncCurrentRoom(rooms = state.rooms) {
+  if (!rooms?.length) {
+    return applyRoomSelection(null, rooms);
+  }
+  const selected = findSelectedRoom(rooms);
+  return applyRoomSelection(selected?.code || null, rooms);
+}
 
 export async function loadRooms() {
-    try {
-        const rooms = await API.get("/rooms");
-        state.setRooms(rooms);
-    } catch (err) {
-        console.error("Failed to load rooms:", err);
-    }
+  const rooms = await API.loadRooms();
+  state.setRooms(rooms);
+  syncCurrentRoom(rooms);
+  return rooms;
 }
 
-// --- REFRESH ROOMS PERIODICALLY (optional) ---
-
-let roomsInterval = null;
-
-export function startRoomPolling(intervalMs = 4000) {
-    if (roomsInterval) clearInterval(roomsInterval);
-    roomsInterval = setInterval(loadRooms, intervalMs);
+export async function createRoom({ name, maxPlayers, maxSpectators }) {
+  const room = await API.createRoom({ name, maxPlayers, maxSpectators });
+  applyRoomSelection(room.code);
+  await loadRooms();
+  return room;
 }
 
-export function stopRoomPolling() {
-    if (roomsInterval) clearInterval(roomsInterval);
-    roomsInterval = null;
+export async function joinRoom(roomCode) {
+  const room = await API.joinRoom(roomCode);
+  applyRoomSelection(room.code);
+  await loadRooms();
+  return room;
 }
 
-// --- CREATE ROOM ---
-
-export async function createRoom(roomName, maxPlayers = 4, maxSpectators = 2) {
-    if (!roomName || roomName.trim().length < 1) {
-        throw new Error("INVALID_ROOM_NAME");
-    }
-
-    const payload = {
-        name: roomName,
-        max_players: maxPlayers,
-        max_spectators: maxSpectators
-    };
-
-    const room = await API.post("/rooms", payload);
-
-    // Update state
-    await loadRooms();
-    return room;
-}
-
-// --- JOIN ROOM ---
-
-export async function joinRoom(roomId) {
-    if (!roomId) {
-        throw new Error("INVALID_ROOM_ID");
-    }
-
-    const room = await API.post(`/rooms/${roomId}/join`);
-
-    state.selectRoom(room); // set active room
-    renderRoomDetails(room); // update UI
-
-    return room;
-}
-
-// --- SELECT ROOM (via UI click) ---
-
-export function selectRoom(roomId) {
-    const room = state.rooms.find(r => r.id === roomId);
-    if (!room) return;
-    state.selectRoom(room);
-    renderRoomDetails(room);
-}
-
-// --- INITIALIZATION ---
-
-export function initRooms() {
-    loadRooms();
-    startRoomPolling();
-}
