@@ -30,8 +30,8 @@
       <nav class="nav">
         <a href="index.html" data-nav="login">LOGIN</a>
         <a href="main.html" class="active" data-nav="game">GAME</a>
-        <a href="../admin-web/management.html" data-nav="management">Management</a>
-        <a href="../admin-web/admin.html" data-nav="admin">Admin</a>
+        <a href="management.html" data-nav="management">Management</a>
+        <a href="admin.html" data-nav="admin">Admin</a>
         <button type="button" id="logoutButton" class="nav-action" hidden>
           LOGOUT
         </button>
@@ -204,17 +204,7 @@
         Update this if your server runs on a different host or port.
       </p>
     </section>
-	<!-- New modular architecture (empty for now) -->
-	<script type="module" src="./modules/api.js"></script>
-	<script type="module" src="./modules/auth.js"></script>
-	<script type="module" src="./modules/state.js"></script>
-	<script type="module" src="./modules/rooms.js"></script>
-	<script type="module" src="./modules/cards.js"></script>
-	<script type="module" src="./modules/ui.js"></script>
-	<script type="module" src="./modules/i18n.js"></script>
-	<script type="module" src="./modules/validation.js"></script>
 
-	<!-- Existing legacy client logic -->
-	<script src="./main.js"></script>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>

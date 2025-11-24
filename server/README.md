@@ -39,6 +39,10 @@ Backend service for the game built with **FastAPI**. This layer exposes HTTP API
    uvicorn app.main:app --reload
    ```
 
+   The FastAPI app will automatically serve the front-end bundle when the sibling
+   `../client-web` directory exists (including the admin pages). Missing directories are
+   logged as warnings so you can run the API without the static assets when needed.
+
 ## API surface
 - `POST /auth/login` — sign in with provider `apple`, `google`, or `guest` (default if omitted); returns bearer token for subsequent calls. Payload accepts both `display_name` and `displayName` keys for guest sign-up/login.
 - `POST /admin/cards` — create a card (requires admin bearer token).
