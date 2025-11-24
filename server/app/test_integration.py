@@ -38,8 +38,24 @@ def client(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def admin_headers():
-    return {"X-User-Id": "admin"}
+def admin_credentials(client):
+    login_payload = {
+        "provider": "guest",
+        "display_name": "admin",
+        "password": "admin",
+    }
+    response = client.post("/auth/login", json=login_payload)
+    assert response.status_code == 200
+    admin_user = response.json()
+    return {"id": admin_user["id"], "password": login_payload["password"]}
+
+
+@pytest.fixture()
+def admin_headers(admin_credentials):
+    return {
+        "X-User-Id": admin_credentials["id"],
+        "X-User-Password": admin_credentials["password"],
+    }
 
 
 def test_guest_room_flow_and_admin_exports(client, admin_headers):
@@ -139,3 +155,10 @@ def test_admin_token_verification_endpoint(client, admin_headers):
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_admin_requires_password(client, admin_credentials):
+    response = client.get("/admin/verify", headers={"X-User-Id": admin_credentials["id"]})
+
+    assert response.status_code == 401
+    assert "Invalid credentials" in response.text

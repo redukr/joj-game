@@ -217,6 +217,12 @@ class Repository:
             return False
         return self._pwd_context.verify(password, password_hash)
 
+    def verify_guest_password(self, user_id: str, password: str) -> bool:
+        user = self.session.get(User, user_id)
+        if not user or user.provider != Provider.GUEST:
+            return False
+        return self._verify_password(password, user.password_hash)
+
     def _get_provider_config(self, provider: Provider) -> tuple[str, str]:
         if provider == Provider.GOOGLE:
             return self.settings.google_issuer, self.settings.google_jwks_url
