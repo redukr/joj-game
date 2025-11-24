@@ -44,33 +44,36 @@ class Settings(BaseSettings):
     default_page_size: int = Field(50, env="DEFAULT_PAGE_SIZE")
     max_page_size: int = Field(100, env="MAX_PAGE_SIZE")
     access_token_ttl_minutes: int = Field(30, env="ACCESS_TOKEN_TTL_MINUTES")
+    admin_token: str | None = Field(None, env="ADMIN_TOKEN")
 
-    @validator("allowed_oauth_providers", "allowed_origins", "oauth_audience", pre=True)
+    @validator(
+        "allowed_oauth_providers", "allowed_origins", "oauth_audience", pre=True, allow_reuse=True
+    )
     def _split_csv(cls, value):  # noqa: N805
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
-    @validator("allowed_origin_regex", pre=True)
+    @validator("allowed_origin_regex", pre=True, allow_reuse=True)
     def _empty_regex_to_none(cls, value):  # noqa: N805
         if value in {"", None}:
             return None
         return value
 
-    @validator("environment")
+    @validator("environment", allow_reuse=True)
     def _normalize_environment(cls, value: str) -> str:  # noqa: N805
         normalized = value.lower()
         if normalized not in {"development", "production", "staging"}:
             raise ValueError("APP_ENV must be development, staging, or production")
         return normalized
 
-    @validator("allowed_origins", each_item=True)
+    @validator("allowed_origins", each_item=True, allow_reuse=True)
     def _validate_origin_format(cls, value: str) -> str:  # noqa: N805
         if not value.startswith("http://") and not value.startswith("https://"):
             raise ValueError("Allowed origins must start with http:// or https://")
         return value.rstrip("/")
 
-    @validator("allowed_origin_regex")
+    @validator("allowed_origin_regex", allow_reuse=True)
     def _restrict_regex_in_prod(cls, value, values):  # noqa: N805
         environment = values.get("environment", "development")
         if environment == "production" and value:

@@ -9,18 +9,15 @@ Catalog of every file in the repository with brief notes on why it exists and ho
 - `LICENSE` – Project license (MIT).
 - `README.md` – Top-level overview and quickstart for the game services.
 
-## Admin web client (`admin-web/`)
-- `admin-web/README.md` – Notes for running and maintaining the admin UI.
-- `admin-web/admin.html` – Admin entry page markup.
-- `admin-web/main.js` – Admin logic for tokens, deck management, and accessibility enhancements.
-- `admin-web/management.html` – Room/user management page markup.
-- `admin-web/styles.css` – Styling for admin pages, focus states, dialogs, and layout.
-
 ## Player web client (`client-web/`)
 - `client-web/README.md` – Usage notes for the player-facing web bundle.
 - `client-web/index.html` – Landing/login markup for players.
+- `client-web/admin.html` – Admin entry page markup served alongside the player client.
+- `client-web/management.html` – Room/user management page markup.
 - `client-web/main.html` – Game lobby and play surface markup.
+- `client-web/admin.js` – Entry point wiring the shared admin module for admin/management pages.
 - `client-web/main.js` – Client-side logic for authentication, rooms, cards, and validation.
+- `client-web/admin-styles.css` – Styling for admin/management pages, focus states, dialogs, and layout.
 - `client-web/styles.css` – Player UI styling, focus indicators, and toasts.
 
 ## Platform client stubs

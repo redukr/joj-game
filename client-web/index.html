@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="auth" data-redirect-after-auth="main.html">
-    <a class="skip-link" href="#statusArea">Skip to status updates</a>
+    <a class="skip-link" href="#statusArea" data-i18n="common.skipToStatus">Skip to status updates</a>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <header>
       <div class="header-main">
@@ -28,11 +28,17 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="index.html" class="active" data-nav="login">LOGIN</a>
-        <a href="main.html" data-nav="game">GAME</a>
-        <a href="../admin-web/management.html" data-nav="management">Management</a>
-        <a href="../admin-web/admin.html" data-nav="admin">Admin</a>
-        <button type="button" id="logoutButton" class="nav-action" hidden>
+        <a href="index.html" class="active" data-nav="login" data-i18n="nav.login">LOGIN</a>
+        <a href="main.html" data-nav="game" data-i18n="nav.game">GAME</a>
+        <a href="management.html" data-nav="management" data-i18n="nav.management">Management</a>
+        <a href="admin.html" data-nav="admin" data-i18n="nav.admin">Admin</a>
+        <button
+          type="button"
+          id="logoutButton"
+          class="nav-action"
+          hidden
+          data-i18n="nav.logout"
+        >
           LOGOUT
         </button>
       </nav>
@@ -71,11 +77,11 @@
       <div class="card-header">
         <div>
           <h2 data-i18n="login.heading">Guest login</h2>
-          <p class="muted">First step: register or log in to continue.</p>
+          <p class="muted" data-i18n="login.intro">First step: register or log in to continue.</p>
         </div>
         <div class="actions">
-          <a class="ghost" href="../admin-web/management.html">Skip to management</a>
-          <a class="ghost" href="../admin-web/admin.html">Admin module</a>
+          <a class="ghost" href="management.html" data-i18n="login.skipManagement">Skip to management</a>
+          <a class="ghost" href="admin.html" data-i18n="login.adminModule">Admin module</a>
         </div>
       </div>
       <form id="guestLoginForm">
@@ -113,37 +119,35 @@
           <button type="submit" data-i18n="login.submit">Sign in</button>
         </div>
       </form>
-      <p class="hint">
-        After successful authentication you will be redirected to the game page
-        to create or join rooms.
+      <p class="hint" data-i18n="login.redirectHint">
+        After successful authentication you will be redirected to the game page to create or join rooms.
       </p>
       <div id="userInfo" class="muted"></div>
     </section>
 
     <section class="card">
-      <h2>Modules</h2>
+      <h2 data-i18n="modules.heading">Modules</h2>
       <div class="grid">
         <article class="card nested-card">
-          <h3>Game and rooms</h3>
-          <p class="muted">
-            Continue to the main lobby to create game rooms or see what other
-            players have opened.
+          <h3 data-i18n="modules.game.title">Game and rooms</h3>
+          <p class="muted" data-i18n="modules.game.description">
+            Continue to the main lobby to create game rooms or see what other players have opened.
           </p>
-          <a class="button" href="main.html">Go to main.html</a>
+          <a class="button" href="main.html" data-i18n="modules.game.cta">Go to main.html</a>
         </article>
         <article class="card nested-card">
-          <h3>Management</h3>
-          <p class="muted">
+          <h3 data-i18n="modules.management.title">Management</h3>
+          <p class="muted" data-i18n="modules.management.description">
             Browse high-level system, player, card, and deck options.
           </p>
-          <a class="button" href="../admin-web/management.html">Go to management.html</a>
+          <a class="button" href="management.html" data-i18n="modules.management.cta">Go to management.html</a>
         </article>
         <article class="card nested-card">
-          <h3>Admin</h3>
-          <p class="muted">
+          <h3 data-i18n="modules.admin.title">Admin</h3>
+          <p class="muted" data-i18n="modules.admin.description">
             Supply your admin token to seed, inspect, and maintain core assets.
           </p>
-          <a class="button" href="../admin-web/admin.html">Go to admin.html</a>
+          <a class="button" href="admin.html" data-i18n="modules.admin.cta">Go to admin.html</a>
         </article>
       </div>
     </section>
@@ -159,6 +163,6 @@
       ></pre>
     </section>
 
-    <script src="main.js"></script>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>

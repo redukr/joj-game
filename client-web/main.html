@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="main">
-    <a class="skip-link" href="#statusArea">Skip to status updates</a>
+    <a class="skip-link" href="#statusArea" data-i18n="common.skipToStatus">Skip to status updates</a>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <header>
       <div class="header-main">
@@ -28,11 +28,11 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="index.html" data-nav="login">LOGIN</a>
-        <a href="main.html" class="active" data-nav="game">GAME</a>
-        <a href="../admin-web/management.html" data-nav="management">Management</a>
-        <a href="../admin-web/admin.html" data-nav="admin">Admin</a>
-        <button type="button" id="logoutButton" class="nav-action" hidden>
+        <a href="index.html" data-nav="login" data-i18n="nav.login">LOGIN</a>
+        <a href="main.html" class="active" data-nav="game" data-i18n="nav.game">GAME</a>
+        <a href="management.html" data-nav="management" data-i18n="nav.management">Management</a>
+        <a href="admin.html" data-nav="admin" data-i18n="nav.admin">Admin</a>
+        <button type="button" id="logoutButton" class="nav-action" hidden data-i18n="nav.logout">
           LOGOUT
         </button>
       </nav>
@@ -60,7 +60,7 @@
       <div class="card-header">
         <div>
           <h2 data-i18n="rooms.list.heading">Rooms</h2>
-          <p class="muted">Signed-in players can create and refresh game rooms.</p>
+          <p class="muted" data-i18n="rooms.list.hint">Signed-in players can create and refresh game rooms.</p>
         </div>
         <div id="userInfo" class="pill"></div>
       </div>
@@ -116,7 +116,7 @@
             </div>
           </div>
           <div class="table-wrapper" role="region" aria-live="polite">
-            <table class="data-table" id="roomsTable">
+            <table class="data-table" id="rooms-table">
               <caption data-i18n="rooms.list.heading">Rooms</caption>
               <thead>
                 <tr>
@@ -132,7 +132,7 @@
                   <th scope="col" data-i18n="rooms.join.cta">Join</th>
                 </tr>
               </thead>
-              <tbody id="roomsTableBody"></tbody>
+              <tbody id="rooms-tableBody"></tbody>
             </table>
           </div>
         </article>
@@ -143,7 +143,7 @@
       <div class="card-header">
         <div>
           <h2 data-i18n="game.heading">Gameplay workspace</h2>
-          <p class="muted">
+          <p class="muted" data-i18n="game.intro">
             Draw and arrange cards locally after authenticating as a player.
           </p>
         </div>
@@ -162,7 +162,7 @@
         <article class="card nested-card">
           <div class="card-header">
             <h3 data-i18n="game.deck.heading">Deck</h3>
-            <div class="pill" id="deckCount">0 cards</div>
+            <div class="pill" id="deckCount" data-i18n="game.deck.empty">0 cards</div>
           </div>
           <p class="muted" data-i18n="game.deck.hint">Use Draw to pull the next card into your hand.</p>
         </article>
@@ -205,6 +205,6 @@
       </p>
     </section>
 
-    <script src="main.js"></script>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>

@@ -232,7 +232,8 @@ select:focus-visible,
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
 }
 
-button {
+button,
+.button {
   background: linear-gradient(135deg, #4f46e5, #6366f1);
   color: white;
   border: none;
@@ -241,9 +242,14 @@ button {
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
-button:hover {
+button:hover,
+.button:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 25px rgba(99, 102, 241, 0.25);
 }
@@ -273,11 +279,19 @@ button.is-busy::after {
   animation: spin 0.7s linear infinite;
 }
 
-button.ghost {
+.button.ghost,
+button.ghost,
+a.ghost {
   background: transparent;
   color: #0f172a;
   border: 1px solid #cbd5e1;
   box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  text-decoration: none;
 }
 
 .card-header {
@@ -288,7 +302,8 @@ button.ghost {
   margin-bottom: 0.5rem;
 }
 
-.actions button {
+.actions button,
+.actions .button {
   background: #0ea5e9;
   box-shadow: none;
 }

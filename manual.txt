@@ -20,8 +20,8 @@ Web client setup and launch
    cd client-web
    python -m http.server 8001
    The API server allows cross-origin calls from http://localhost:8001 and http://127.0.0.1:8001 by default.
-2) Serve the admin console from the sibling admin-web directory on a separate port:
-   cd ../admin-web
+2) Serve the admin console from the client-web directory on a separate port:
+   cd ../client-web
    python -m http.server 8002
    The API server also allows cross-origin calls from http://localhost:8002 and http://127.0.0.1:8002 by default.
 3) Open http://localhost:8001/ for the player client and http://localhost:8002/ for admin tools. In the UIs, set the API base URL to the FastAPI server address (defaults to http://localhost:8000). If you change the client or admin ports, update the API server's allowed origins accordingly.

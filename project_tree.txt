@@ -3,29 +3,10 @@
 ├── .gitignore
 ├── .vscode
 │   └── settings.json
-├── ADMIN_DELIVERY_SUMMARY.md
-├── ADMIN_DOCS_INDEX.md
-├── ADMIN_INTERFACE_ANALYSIS.md
-├── ADMIN_OVERVIEW.md
-├── ADMIN_REFACTORING_GUIDE.md
-├── ADMIN_SUMMARY.md
-├── ANALYSIS_DELIVERY_SUMMARY.md
-├── FRONTEND_ANALYSIS.md
-├── FRONTEND_DOCS_INDEX.md
-├── FRONTEND_REFACTORING_GUIDE.md
-├── FRONTEND_SUMMARY.md
 ├── LICENSE
 ├── README.md
-├── admin-web
-│   ├── README.md
-│   ├── admin.html
-│   ├── main.js
-│   ├── management.html
-│   └── styles.css
 ├── cards
 │   ├── README.md
-│   ├── cards_1.txt
-│   ├── sample-deck-lyap.json
 │   └── sample-deck.json
 ├── client-android
 │   └── README.md
@@ -37,9 +18,23 @@
 │   └── README.md
 ├── client-web
 │   ├── README.md
+│   ├── admin-styles.css
+│   ├── admin.html
 │   ├── index.html
 │   ├── main.html
 │   ├── main.js
+│   ├── management.html
+│   ├── modules
+│   │   ├── admin.js
+│   │   ├── api.js
+│   │   ├── auth.js
+│   │   ├── cards.js
+│   │   ├── game.js
+│   │   ├── i18n.js
+│   │   ├── rooms.js
+│   │   ├── state.js
+│   │   ├── ui.js
+│   │   └── validation.js
 │   └── styles.css
 ├── client-windows
 │   ├── README.md

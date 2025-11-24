@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JOJ Game - Management</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin-styles.css" />
   </head>
   <body data-page="management">
-    <a class="skip-link" href="#statusArea">Skip to status updates</a>
+    <a class="skip-link" href="#statusArea" data-i18n="common.skipToStatus">Skip to status updates</a>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <header>
       <div class="header-main">
@@ -28,10 +28,18 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="../client-web/index.html" data-nav="login">LOGIN</a>
-        <a href="../client-web/main.html" data-nav="game" data-requires-auth>GAME</a>
-        <a href="management.html" class="active" data-nav="management" data-requires-auth>MANAGEMENT</a>
-        <a href="admin.html" data-nav="admin" data-requires-admin>ADMIN</a>
+        <a href="index.html" data-nav="login" data-i18n="nav.login">LOGIN</a>
+        <a href="main.html" data-nav="game" data-requires-auth data-i18n="nav.game">GAME</a>
+        <a
+          href="management.html"
+          class="active"
+          data-nav="management"
+          data-requires-auth
+          data-i18n="nav.management"
+        >
+          MANAGEMENT
+        </a>
+        <a href="admin.html" data-nav="admin" data-requires-admin data-i18n="nav.admin">ADMIN</a>
       </nav>
 
       <div id="accessBanner" class="banner warning" hidden>
@@ -86,14 +94,14 @@
         <p class="muted">
           Track overall server health and configuration from FastAPI endpoints.
         </p>
-        <a class="button" href="../client-web/main.html">Check lobby</a>
+        <a class="button" href="main.html">Check lobby</a>
       </article>
       <article class="card nested-card">
         <h3>Player management</h3>
         <p class="muted">
           Use the login page to add players, then monitor their rooms here.
         </p>
-        <a class="button" href="../client-web/main.html">View player rooms</a>
+        <a class="button" href="main.html">View player rooms</a>
       </article>
       <article class="card nested-card">
         <h3>Card & deck management</h3>
@@ -116,6 +124,6 @@
       ></pre>
     </section>
 
-    <script src="main.js"></script>
+    <script type="module" src="./modules/admin.js"></script>
   </body>
 </html>
