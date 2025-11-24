@@ -39,8 +39,8 @@ def _resolve_cors_settings():
 
     return origins, origin_regex
 
-client_web_dir = Path(__file__).resolve().parents[2] / "client-web"
-admin_web_dir = Path(__file__).resolve().parents[2] / "admin-web"
+repo_root = Path(__file__).resolve().parents[2]
+client_web_dir = repo_root / "client-web"
 
 allowed_origins, allowed_origin_regex = _resolve_cors_settings()
 
@@ -53,16 +53,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount(
-    "/client-web",
-    StaticFiles(directory=client_web_dir, html=True),
-    name="client-web",
-)
-app.mount(
-    "/admin-web",
-    StaticFiles(directory=admin_web_dir, html=True),
-    name="admin-web",
-)
+
+def _mount_frontend(directory: Path, route: str, name: str) -> bool:
+    """Mount a static frontend directory if it exists."""
+
+    if directory.exists():
+        app.mount(route, StaticFiles(directory=directory, html=True), name=name)
+        return True
+
+    logger.warning("Skipping static mount for %s; directory missing: %s", name, directory)
+    return False
+
+
+client_web_mounted = _mount_frontend(client_web_dir, "/client-web", "client-web")
 
 app.include_router(auth.router)
 app.include_router(cards.router)
@@ -74,13 +77,24 @@ app.include_router(rooms.router)
 def root():
     """Provide a friendly root response instead of FastAPI's default 404."""
 
-    return {
+    response = {
         "message": "JOJ Game server is running",
         "docs_url": "/docs",
         "openapi_url": "/openapi.json",
-        "web_client_url": "/client-web/",
-        "admin_web_url": "/admin-web/",
     }
+
+    if client_web_mounted:
+        response["web_client_url"] = "/client-web/"
+
+        admin_page = client_web_dir / "admin.html"
+        if admin_page.exists():
+            response["admin_web_url"] = "/client-web/admin.html"
+
+        management_page = client_web_dir / "management.html"
+        if management_page.exists():
+            response["management_url"] = "/client-web/management.html"
+
+    return response
 
 
 @app.get("/index.html")
@@ -88,7 +102,7 @@ def client_index():
     """Redirect legacy index path to the mounted client web app."""
 
     index_path = client_web_dir / "index.html"
-    if index_path.exists():
+    if client_web_mounted and index_path.exists():
         return RedirectResponse(url="/client-web/index.html")
     return JSONResponse(
         status_code=404,
@@ -100,9 +114,9 @@ def client_index():
 def admin_index():
     """Redirect legacy admin path to the mounted admin web app."""
 
-    index_path = admin_web_dir / "admin.html"
-    if index_path.exists():
-        return RedirectResponse(url="/admin-web/admin.html")
+    index_path = client_web_dir / "admin.html"
+    if client_web_mounted and index_path.exists():
+        return RedirectResponse(url="/client-web/admin.html")
     return JSONResponse(
         status_code=404,
         content={"detail": "Admin web bundle not found"},

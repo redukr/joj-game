@@ -168,3 +168,36 @@ export function importDeck(adminToken, payload) {
     skipAuth: true,
   });
 }
+
+export function loadAdminUsers(adminToken) {
+  return request("/admin/users", { adminToken, skipAuth: true });
+}
+
+export function updateUserRole(adminToken, userId, role) {
+  return request(`/admin/users/${userId}/role`, {
+    method: "PATCH",
+    body: { role },
+    adminToken,
+    skipAuth: true,
+  });
+}
+
+export function deleteUser(adminToken, userId) {
+  return request(`/admin/users/${userId}`, {
+    method: "DELETE",
+    adminToken,
+    skipAuth: true,
+  });
+}
+
+export function loadAdminRooms(adminToken) {
+  return request("/admin/rooms", { adminToken, skipAuth: true });
+}
+
+export function deleteAdminRoom(adminToken, roomCode) {
+  return request(`/admin/rooms/${roomCode}`, {
+    method: "DELETE",
+    adminToken,
+    skipAuth: true,
+  });
+}

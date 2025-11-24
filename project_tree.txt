@@ -16,12 +16,6 @@
 ├── FRONTEND_SUMMARY.md
 ├── LICENSE
 ├── README.md
-├── admin-web
-│   ├── README.md
-│   ├── admin.html
-│   ├── main.js
-│   ├── management.html
-│   └── styles.css
 ├── cards
 │   ├── README.md
 │   └── sample-deck.json
@@ -35,9 +29,13 @@
 │   └── README.md
 ├── client-web
 │   ├── README.md
+│   ├── admin-styles.css
+│   ├── admin.html
+│   ├── admin.js
 │   ├── index.html
 │   ├── main.html
 │   ├── main.js
+│   ├── management.html
 │   ├── modules
 │   │   ├── api.js
 │   │   ├── auth.js

@@ -30,8 +30,8 @@
       <nav class="nav">
         <a href="index.html" class="active" data-nav="login">LOGIN</a>
         <a href="main.html" data-nav="game">GAME</a>
-        <a href="../admin-web/management.html" data-nav="management">Management</a>
-        <a href="../admin-web/admin.html" data-nav="admin">Admin</a>
+        <a href="management.html" data-nav="management">Management</a>
+        <a href="admin.html" data-nav="admin">Admin</a>
         <button type="button" id="logoutButton" class="nav-action" hidden>
           LOGOUT
         </button>
@@ -74,8 +74,8 @@
           <p class="muted">First step: register or log in to continue.</p>
         </div>
         <div class="actions">
-          <a class="ghost" href="../admin-web/management.html">Skip to management</a>
-          <a class="ghost" href="../admin-web/admin.html">Admin module</a>
+          <a class="ghost" href="management.html">Skip to management</a>
+          <a class="ghost" href="admin.html">Admin module</a>
         </div>
       </div>
       <form id="guestLoginForm">
@@ -136,14 +136,14 @@
           <p class="muted">
             Browse high-level system, player, card, and deck options.
           </p>
-          <a class="button" href="../admin-web/management.html">Go to management.html</a>
+          <a class="button" href="management.html">Go to management.html</a>
         </article>
         <article class="card nested-card">
           <h3>Admin</h3>
           <p class="muted">
             Supply your admin token to seed, inspect, and maintain core assets.
           </p>
-          <a class="button" href="../admin-web/admin.html">Go to admin.html</a>
+          <a class="button" href="admin.html">Go to admin.html</a>
         </article>
       </div>
     </section>
@@ -159,6 +159,6 @@
       ></pre>
     </section>
 
-    <script src="main.js"></script>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>
