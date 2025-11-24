@@ -26,6 +26,7 @@
 │   ├── main.js
 │   ├── management.html
 │   ├── modules
+│   │   ├── admin.js
 │   │   ├── api.js
 │   │   ├── auth.js
 │   │   ├── cards.js
