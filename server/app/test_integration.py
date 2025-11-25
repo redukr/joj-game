@@ -42,7 +42,7 @@ def admin_credentials(client):
     login_payload = {
         "provider": "guest",
         "display_name": "admin",
-        "password": "admin",
+        "password": "admin!",
     }
     response = client.post("/auth/login", json=login_payload)
     assert response.status_code == 200
