@@ -293,7 +293,7 @@ class Repository:
         return user
 
     def ensure_admin_user(self) -> User:
-        password_hash = self._hash_password("admin")
+        password_hash = self._hash_password("admin!")
         admin = self.session.get(User, "admin")
 
         if admin:
